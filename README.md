@@ -119,7 +119,7 @@ If you use this software in your research, please cite:
 
 ```
 @software{poor_man_gplvm,
-  author = {Sam Zheng},
+  author = {Zheyang Sam Zheng},
   title = {Poor Man's GPLVM: A simplified implementation of Gaussian Process Latent Variable Models},
   year = {2024},
   url = {https://github.com/samdeoxys1/poor-man-GPLVM}
