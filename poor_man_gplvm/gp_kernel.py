@@ -23,7 +23,7 @@ def rbf_kernel_multi_d(x,y,ls,var):
     dist_sq_per_dim = (x-y)**2
     val = jnp.exp(-jnp.sum(dist_sq_per_dim/ls**2)) * var
     # log_val = get_log(val)
-    val = -jnp.sum(dist_sq_per_dim/ls**2) +jnp.log(var)
+    log_val = -jnp.sum(dist_sq_per_dim/ls**2) +jnp.log(var)
     return val,log_val
 
 
