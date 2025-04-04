@@ -59,8 +59,8 @@ class PoissonGPLVMJump1D:
         self.initialize_params(self.rng_init)
     
     def initialize_params(self,key):
-        params_init_w = jax.random.normal(key,(self.n_basis,self.n_neuron)) * jnp.sqrt(self.w_init_var) # prior_hyper here is variance
-        params_init_b = jax.random.normal(key,(self.n_neuron,)) * jnp.sqrt(self.b_init_var) + self.b_init_mean
+        params_init_w = jax.random.normal(key,(self.n_basis,self.n_neuron)) * jnp.sqrt(self.w_init_variance) # prior_hyper here is variance
+        params_init_b = jax.random.normal(key,(self.n_neuron,)) * jnp.sqrt(self.b_init_variance) + self.b_init_mean
         params_init = (params_init_w,params_init_b)
         tuning_init = ftwb.glm_get_tuning(params_init,self.tuning_basis)
         self.params = params_init
