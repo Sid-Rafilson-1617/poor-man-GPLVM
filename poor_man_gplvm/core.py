@@ -109,9 +109,9 @@ class PoissonGPLVMJump1D:
         latent_transition_kernel_l,log_latent_transition_kernel_l,dynamics_transition_kernel,log_dynamics_transition_kernel = self.create_transition_prob(movement_variance,p_move_to_jump,p_jump_to_move)
 
         if init_dynamics is None:
-            init_dynamics = jax.random.choice(key,self.possible_dynamics.values)
+            init_dynamics = jax.random.choice(key,self.possible_dynamics)
         if init_latent is None:
-            init_latent = jax.random.choice(key,self.possible_latent_bin.values)
+            init_latent = jax.random.choice(key,self.possible_latent_bin)
         key_l = jax.random.split(key,T)
         dynamics_prev = init_dynamics
         latent_prev = init_latent
@@ -124,8 +124,8 @@ class PoissonGPLVMJump1D:
         def step(carry, key):
             k1,k2=jax.random.split(key,2)
             dynamics_prev,latent_prev = carry 
-            dynamics_curr = jax.random.choice(k1,self.possible_dynamics.values, p=dynamics_transition_kernel[dynamics_prev])
-            latent_curr = jax.random.choice(k2, self.possible_latent_bin.values,p=latent_transition_kernel_l[dynamics_curr][latent_prev])
+            dynamics_curr = jax.random.choice(k1,self.possible_dynamics, p=dynamics_transition_kernel[dynamics_prev])
+            latent_curr = jax.random.choice(k2, self.possible_latent_bin,p=latent_transition_kernel_l[dynamics_curr][latent_prev])
             carry = dynamics_curr,latent_curr
             state = jnp.array([dynamics_curr,latent_curr])
             return carry, state
