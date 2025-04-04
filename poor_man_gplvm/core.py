@@ -6,6 +6,10 @@ from gp_kernel import rbf_kernel,uniform_kernel
 import jax.numpy as jnp
 import jax
 import jax.random as jr
+from jax.scipy.special import logsumexp
+
+
+
 '''
 hyperparams = {'tuning_lengthscale':,'movement_variance':,'prior_variance':}
 '''

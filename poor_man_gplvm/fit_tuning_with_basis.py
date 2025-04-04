@@ -7,7 +7,7 @@ import jax.numpy as jnp
 from jax import jit, vmap
 import jaxopt
 from functools import partial
-
+import jax.scipy.special as jscipy
 
 
 @jit
