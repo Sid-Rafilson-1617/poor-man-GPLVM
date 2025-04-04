@@ -85,7 +85,7 @@ class PoissonGPLVMJump1D:
 
         # classifier transition
         dynamics_transition_matrix = jnp.array([[1-p_move_to_jump,p_move_to_jump],[p_jump_to_move,1-p_jump_to_move]])
-        dynamics_transition_kernel,log_dynamics_transition_kernel = vmap(vmap(lambda x,y:self.dynamics_transition_kernel_func(x,y,dynamics_transition_matrix),in_axes=(0,None),out_axes=0),in_axes=(None,0),out_axes=1)(self.possible_dynamics,self.possible_dynamics) 
+        dynamics_transition_kernel,log_dynamics_transition_kernel = vmap(vmap(lambda x,y:dynamics_transition_kernel_func(x,y,dynamics_transition_matrix),in_axes=(0,None),out_axes=0),in_axes=(None,0),out_axes=1)(self.possible_dynamics,self.possible_dynamics) 
 
         return latent_transition_kernel_l,log_latent_transition_kernel_l,dynamics_transition_kernel,log_dynamics_transition_kernel
 
