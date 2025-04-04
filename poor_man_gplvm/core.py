@@ -2,7 +2,8 @@
 
 import numpy as np
 from jax import jit, vmap
-from gp_kernel import rbf_kernel,uniform_kernel
+
+from .gp_kernel import rbf_kernel,uniform_kernel
 import jax.numpy as jnp
 import jax
 import jax.random as jr
