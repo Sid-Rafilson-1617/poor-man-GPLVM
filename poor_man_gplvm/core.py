@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import jax
 import jax.random as jr
 from jax.scipy.special import logsumexp
-
+from poor_man_gplvm import fit_tuning_with_basis as ftwb
 
 
 '''
@@ -54,6 +54,18 @@ class PoissonGPLVMJump1D:
         # generate the basis
         self.tuning_basis = generate_basis(self.tuning_lengthscale,self.n_latent_bin,self.explained_variance_threshold_basis)
         self.n_basis = self.tuning_basis.shape[1]
+
+        # initialize the params and tuning
+        self.initialize_params(self.rng_init)
+    
+    def initialize_params(self,key):
+        params_init_w = jax.random.normal(key,(self.n_basis,self.n_neuron)) * jnp.sqrt(self.w_init_var) # prior_hyper here is variance
+        params_init_b = jax.random.normal(key,(self.n_neuron,)) * jnp.sqrt(self.b_init_var) + self.b_init_mean
+        params_init = (params_init_w,params_init_b)
+        tuning_init = ftwb.glm_get_tuning(params_init,self.tuning_basis)
+        self.params = params_init
+        self.tuning = tuning_init
+        return params_init,tuning_init
 
     def create_transition_prob(self,movement_variance=1,p_move_to_jump=0.01,p_jump_to_move=0.01):
         '''
