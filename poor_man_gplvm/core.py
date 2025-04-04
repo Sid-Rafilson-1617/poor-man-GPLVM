@@ -3,7 +3,8 @@
 import numpy as np
 from jax import jit, vmap
 
-from .gp_kernel import rbf_kernel,uniform_kernel
+import poor_man_gplvm.gp_kernel as gpk
+# from .gp_kernel import rbf_kernel,uniform_kernel
 import jax.numpy as jnp
 import jax
 import jax.random as jr
@@ -17,7 +18,7 @@ hyperparams = {'tuning_lengthscale':,'movement_variance':,'prior_variance':}
 
 def generate_basis(lengthscale,n_latent_bin,explained_variance_threshold_basis = 0.999 ):
     possible_latent_bin = jnp.linspace(0,1,n_latent_bin)
-    tuning_kernel,log_tuning_kernel = vmap(vmap(lambda x,y: rbf_kernel(x,y,lengthscale,1.),in_axes=(0,None),out_axes=0),out_axes=1,in_axes=(None,0))(possible_latent_bin,possible_latent_bin)
+    tuning_kernel,log_tuning_kernel = vmap(vmap(lambda x,y: gpk.rbf_kernel(x,y,lengthscale,1.),in_axes=(0,None),out_axes=0),out_axes=1,in_axes=(None,0))(possible_latent_bin,possible_latent_bin)
 
     tuning_basis,sing_val,_ = jnp.linalg.svd(tuning_kernel)
     # filter out basis for numerical instability
@@ -62,12 +63,12 @@ class PoissonGPLVMJump1D:
         # multiple tuning state transition
         latent_transition_kernel_l = []
         log_latent_transition_kernel_l=[]
-        latent_transition_kernel_func_l = [rbf_kernel,uniform_kernel]
+        latent_transition_kernel_func_l = [gpk.rbf_kernel,gpk.uniform_kernel]
         latent_transition_kernel_args_l = [
             [movement_variance,1.],
             [self.n_latent_bin]
         ]
-        dynamics_transition_kernel_func = gpk.
+        dynamics_transition_kernel_func = gpk.discrete_transition_kernel
         
         for latent_transition_kernel_func,latent_transition_kernel_args in zip(latent_transition_kernel_func_l,
                                                                                            latent_transition_kernel_args_l
