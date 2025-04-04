@@ -32,7 +32,7 @@ class PoissonGPLVMJump1D:
     The latent governs firing rate; the dynamics governs the transition probabilities between the latent states;
     """
     
-    def __init__(self, n_latent_bin = 100, tuning_lengthscale=1.,
+    def __init__(self,n_neuron, n_latent_bin = 100, tuning_lengthscale=1.,
                  movement_variance=1.,
                  explained_variance_threshold_basis=0.999,
                  rng_init_int = 123,
@@ -47,7 +47,7 @@ class PoissonGPLVMJump1D:
         self.explained_variance_threshold_basis = explained_variance_threshold_basis
         self.rng_init_int = rng_init_int
         self.rng_init = jr.PRNGKey(rng_init_int)
-
+        self.n_neuron = n_neuron
         self.possible_latent_bin = jnp.arange(self.n_latent_bin)
         self.possible_dynamics = jnp.arange(2)
         
