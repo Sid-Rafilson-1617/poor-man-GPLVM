@@ -126,10 +126,10 @@ def filter_all_step(ll_all,log_latent_transition_kernel_l,log_dynamics_transitio
     return log_posterior_all, log_marginal_final, log_prior_curr_all
 
 
-def filter_all_step_combined_ma(y, tuning, ma,log_latent_transition_kernel_l,log_dynamics_transition_kernel,carry_init=None,likelihood_scale=1):
+def filter_all_step_combined_ma(y, tuning, log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma,carry_init=None,likelihood_scale=1):
     '''
-    get ll and then filter
-    
+    "combined" meaning get ll and then filter
+    "ma" meaning spatial-temporal mask can be included
     '''
     
     ll_all=get_loglikelihood_ma_all(y,tuning,ma)
@@ -215,7 +215,7 @@ def smooth_all_step_combined_ma_chunk(y, tuning,log_latent_transition_kernel_l,l
 
         # spatio-temporal mask
         ma_chunk = ma[sl]
-        print(ma_chunk.shape)
+        
         
         log_causal_posterior_all,log_marginal_final,log_causal_prior_all=filter_all_step_combined_ma(y_chunk, tuning,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_chunk,carry_init=filter_carry_init,likelihood_scale=likelihood_scale)
         
