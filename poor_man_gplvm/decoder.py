@@ -164,3 +164,25 @@ def smooth_one_step(carry,x,log_latent_transition_mat_l,log_dynamics_transition_
 
     # log_acausal_posterior_curr = log_causal_posterior_curr + inside_integral
     # return log_acausal_posterior_curr,log_acausal_posterior_curr
+
+def smooth_all_step(log_causal_posterior_all, log_causal_prior_all,log_latent_transition_mat_l,log_dynamics_transition_mat,carry_init=None,prior_magnifier=1):
+    '''
+    if carry_init is None: i.e. the last chunk, then the last of causal posterior is the first of acausal, scan the rest, and concatenate the two
+    if carry_init is not None, then scan the whole causal, no need to concatenate
+    '''
+    if carry_init is None:
+        do_concat=True
+        carry_init = log_causal_posterior_all[-1]
+        xs = (log_causal_posterior_all[:-1],log_causal_prior_all)  # causal prior and the acausal init have the same t+1 index, 1 more than the causal posterior; handled when fed in
+    else:
+        do_concat=False
+        xs = (log_causal_posterior_all,log_causal_prior_all)
+
+    
+    f = partial(smooth_one_step,log_latent_transition_mat_l=log_latent_transition_mat_l,log_dynamics_transition_mat=log_dynamics_transition_mat,prior_magnifier=prior_magnifier)
+    carry_final, log_acausal_posterior_all = scan(f, carry_init, xs=xs,reverse=True)
+    if do_concat:
+        log_acausal_posterior_all = jnp.concatenate([log_acausal_posterior_all,log_causal_posterior_all[-1][None,...]],axis=0)
+    
+
+    return log_acausal_posterior_all
