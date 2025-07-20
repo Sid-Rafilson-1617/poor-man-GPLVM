@@ -136,10 +136,9 @@ def filter_all_step_combined_ma(y, tuning, ma,log_latent_transition_kernel_l,log
     return log_posterior_all,log_marginal_final,log_prior_curr_all
 
 
-def smooth_one_step(carry,x,log_latent_transition_kernel_l,log_dynamics_transition_kernel,prior_magnifier=1):
+def smooth_one_step(carry,x,log_latent_transition_kernel_l,log_dynamics_transition_kernel):
     '''
     causal_prior here refers to the prior from filter, i.e. logp(x_k+1|o_1:k)
-    prior_magnifier not implemented yet
     '''
     log_acausal_posterior_next=carry # need "previous" smoother, i.e. next time step (we use next/prev to denote in time here, not in inference steps); 
     log_causal_posterior_curr,log_causal_prior_next=x
@@ -167,7 +166,7 @@ def smooth_one_step(carry,x,log_latent_transition_kernel_l,log_dynamics_transiti
     # return log_acausal_posterior_curr,log_acausal_posterior_curr
 
 @jit
-def smooth_all_step(log_causal_posterior_all, log_causal_prior_all,log_latent_transition_kernel_l,log_dynamics_transition_kernel,carry_init=None,prior_magnifier=1):
+def smooth_all_step(log_causal_posterior_all, log_causal_prior_all,log_latent_transition_kernel_l,log_dynamics_transition_kernel,carry_init=None,):
     '''
     if carry_init is None: i.e. the last chunk, then the last of causal posterior is the first of acausal, scan the rest, and concatenate the two
     if carry_init is not None, then scan the whole causal, no need to concatenate
@@ -181,14 +180,14 @@ def smooth_all_step(log_causal_posterior_all, log_causal_prior_all,log_latent_tr
         xs = (log_causal_posterior_all,log_causal_prior_all)
 
     
-    f = partial(smooth_one_step,log_latent_transition_kernel_l=log_latent_transition_kernel_l,log_dynamics_transition_kernel=log_dynamics_transition_kernel,prior_magnifier=prior_magnifier)
+    f = partial(smooth_one_step,log_latent_transition_kernel_l=log_latent_transition_kernel_l,log_dynamics_transition_kernel=log_dynamics_transition_kernel)
     carry_final, (log_acausal_posterior_all,log_acausal_curr_next_joint_all) = scan(f, carry_init, xs=xs,reverse=True)
     if do_concat:
         log_acausal_posterior_all = jnp.concatenate([log_acausal_posterior_all,log_causal_posterior_all[-1][None,...]],axis=0)
     
     return log_acausal_posterior_all,log_acausal_curr_next_joint_all
 
-def smooth_all_step_combined_ma_chunk(y, tuning,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma,prior_magnifier=1,
+def smooth_all_step_combined_ma_chunk(y, tuning,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma,likelihood_scale=1,
                                 n_time_per_chunk=10000,
                                 ):
     '''
@@ -215,7 +214,7 @@ def smooth_all_step_combined_ma_chunk(y, tuning,log_latent_transition_kernel_l,l
         # spatio-temporal mask
         ma_chunk = ma[sl]
         
-        log_causal_posterior_all,log_marginal_final,log_causal_prior_all=filter_all_step_combined_ma(y_chunk, tuning,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_chunk,carry_init=filter_carry_init,prior_magnifier=prior_magnifier)
+        log_causal_posterior_all,log_marginal_final,log_causal_prior_all=filter_all_step_combined_ma(y_chunk, tuning,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_chunk,carry_init=filter_carry_init,likelihood_scale=likelihood_scale)
         
         filter_carry_init = (log_causal_posterior_all[-1],log_marginal_final)
 
@@ -232,7 +231,7 @@ def smooth_all_step_combined_ma_chunk(y, tuning,log_latent_transition_kernel_l,l
         log_causal_posterior_all = log_causal_posterior_all_allchunk[n]
         # log_causal_prior_all = log_causal_prior_all_allchunk[n]
         
-        log_acausal_posterior_all,log_acausal_curr_next_joint_all = smooth_all_step(log_causal_posterior_all, log_causal_prior_all,log_latent_transition_kernel_l,log_dynamics_transition_kernel,carry_init=smooth_carry_init,prior_magnifier=prior_magnifier)
+        log_acausal_posterior_all,log_acausal_curr_next_joint_all = smooth_all_step(log_causal_posterior_all, log_causal_prior_all,log_latent_transition_kernel_l,log_dynamics_transition_kernel,carry_init=smooth_carry_init)
         smooth_carry_init = log_acausal_posterior_all[0]
 
         log_acausal_posterior_all_allchunk.append(log_acausal_posterior_all)
