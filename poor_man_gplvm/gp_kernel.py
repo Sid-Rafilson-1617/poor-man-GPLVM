@@ -40,7 +40,7 @@ def uniform_kernel(x,y,n_tuning_state):
     return val,log_val
 
 @jit
-def create_transition_prob_1d(possible_latent_bin,movement_variance=1,p_move_to_jump=0.01,p_jump_to_move=0.01):
+def create_transition_prob_1d(possible_latent_bin,possible_dynamics,movement_variance=1,p_move_to_jump=0.01,p_jump_to_move=0.01):
     '''
     create the transition probability matrix for 1d latent and dynamics;
     this is done at the beginning of the fit; so the hyperparams can be selected easily
