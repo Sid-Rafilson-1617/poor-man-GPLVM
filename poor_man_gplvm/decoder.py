@@ -37,7 +37,7 @@ def get_loglikelihood_ma(y,tuning,ma_neuron,ma_latent,dt=1.):
     ll_per_pos = (ll * ma_neuron[None,:]).sum(axis=1)  # n_latent
     
     # Then mask out latent positions by setting their log likelihood to very negative value
-    ll_per_pos = jnp.where(ma_latent, ll_per_pos, -1e40)
+    ll_per_pos = jnp.where(ma_latent, ll_per_pos, 1e-40)
     
     return ll_per_pos
 @jit
