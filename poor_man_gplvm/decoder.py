@@ -151,9 +151,16 @@ def smooth_one_step(carry,x,log_latent_transition_mat_l,log_dynamics_transition_
     post_prior_diff = log_acausal_posterior_next - log_causal_prior_next
     post_prior_diff = post_prior_diff[None,:,None,:] # add the two curr dimensions
     
-    inside_integral = x_next_given_x_curr_I_next + I_next_given_I_curr + post_prior_diff + log_causal_posterior_curr[:,None,:,None]
-    log_curr_next_joint = inside_integral # log p(x_k,I_k,x_k+1,I_k+1|O_1:k)
-    log_acausal_posterior_curr = jscipy.special.logsumexp(inside_integral, axis = (1,3)) # logsumexp over the two "next" dimensions
-    to_return = (log_acausal_posterior_curr,log_curr_next_joint)
+    # inside_integral = x_next_given_x_curr_I_next + I_next_given_I_curr + post_prior_diff + log_causal_posterior_curr[:,None,:,None]
+    # log_curr_next_joint = inside_integral # log p(x_k,I_k,x_k+1,I_k+1|O_1:k)
+    # log_acausal_posterior_curr = jscipy.special.logsumexp(inside_integral, axis = (1,3)) # logsumexp over the two "next" dimensions
+    # to_return = (log_acausal_posterior_curr,log_curr_next_joint)
 
-    return to_return
+    # return to_return
+
+    # old way
+    inside_integral = x_next_given_x_curr_I_next + I_next_given_I_curr + post_prior_diff
+    inside_integral = jscipy.special.logsumexp(inside_integral, axis = (1,3)) # logsumexp over the two "next" dimensions
+
+    log_acausal_posterior_curr = log_causal_posterior_curr + inside_integral
+    return log_acausal_posterior_curr,log_acausal_posterior_curr
