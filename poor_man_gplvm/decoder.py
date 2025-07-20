@@ -136,7 +136,7 @@ def filter_all_step_combined_ma(y, tuning, ma,log_latent_transition_kernel_l,log
     return log_posterior_all,log_marginal_final,log_prior_curr_all
 
 
-def smooth_one_step(carry,x,log_latent_transition_mat_l,log_dynamics_transition_mat,prior_magnifier=1):
+def smooth_one_step(carry,x,log_latent_transition_kernel_l,log_dynamics_transition_kernel,prior_magnifier=1):
     '''
     causal_prior here refers to the prior from filter, i.e. logp(x_k+1|o_1:k)
     prior_magnifier not implemented yet
@@ -146,8 +146,8 @@ def smooth_one_step(carry,x,log_latent_transition_mat_l,log_dynamics_transition_
     # log_causal_prior_next = log_tuning_state_transition_kernel_l + log_non_tuning_transition_kernel + 
 
     # broadcast things into: (nontuning_curr, nontuning_next, tuning_curr, tuning_next)
-    x_next_given_x_curr_I_next = log_latent_transition_mat_l[None,:,:,:] # add the nontuning_curr dimension
-    I_next_given_I_curr = log_dynamics_transition_mat[:,:,None,None] # add the two tuning dimensions
+    x_next_given_x_curr_I_next = log_latent_transition_kernel_l[None,:,:,:] # add the nontuning_curr dimension
+    I_next_given_I_curr = log_dynamics_transition_kernel[:,:,None,None] # add the two tuning dimensions
     post_prior_diff = log_acausal_posterior_next - log_causal_prior_next
     post_prior_diff = post_prior_diff[None,:,None,:] # add the two curr dimensions
     
@@ -165,7 +165,7 @@ def smooth_one_step(carry,x,log_latent_transition_mat_l,log_dynamics_transition_
     # log_acausal_posterior_curr = log_causal_posterior_curr + inside_integral
     # return log_acausal_posterior_curr,log_acausal_posterior_curr
 
-def smooth_all_step(log_causal_posterior_all, log_causal_prior_all,log_latent_transition_mat_l,log_dynamics_transition_mat,carry_init=None,prior_magnifier=1):
+def smooth_all_step(log_causal_posterior_all, log_causal_prior_all,log_latent_transition_kernel_l,log_dynamics_transition_kernel,carry_init=None,prior_magnifier=1):
     '''
     if carry_init is None: i.e. the last chunk, then the last of causal posterior is the first of acausal, scan the rest, and concatenate the two
     if carry_init is not None, then scan the whole causal, no need to concatenate
@@ -179,7 +179,7 @@ def smooth_all_step(log_causal_posterior_all, log_causal_prior_all,log_latent_tr
         xs = (log_causal_posterior_all,log_causal_prior_all)
 
     
-    f = partial(smooth_one_step,log_latent_transition_mat_l=log_latent_transition_mat_l,log_dynamics_transition_mat=log_dynamics_transition_mat,prior_magnifier=prior_magnifier)
+    f = partial(smooth_one_step,log_latent_transition_kernel_l=log_latent_transition_kernel_l,log_dynamics_transition_kernel=log_dynamics_transition_kernel,prior_magnifier=prior_magnifier)
     carry_final, (log_acausal_posterior_all,log_acausal_curr_next_joint_all) = scan(f, carry_init, xs=xs,reverse=True)
     if do_concat:
         log_acausal_posterior_all = jnp.concatenate([log_acausal_posterior_all,log_causal_posterior_all[-1][None,...]],axis=0)
