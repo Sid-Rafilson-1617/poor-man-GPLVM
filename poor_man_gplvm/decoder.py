@@ -156,7 +156,7 @@ def smooth_one_step(carry,x,log_latent_transition_mat_l,log_dynamics_transition_
     log_acausal_posterior_curr = jscipy.special.logsumexp(inside_integral, axis = (1,3)) # logsumexp over the two "next" dimensions
     to_return = (log_acausal_posterior_curr,log_curr_next_joint)
 
-    return to_return
+    return to_return,to_return
 
     # # old way
     # inside_integral = x_next_given_x_curr_I_next + I_next_given_I_curr + post_prior_diff
