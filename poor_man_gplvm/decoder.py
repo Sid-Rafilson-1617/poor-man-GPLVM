@@ -134,3 +134,26 @@ def filter_all_step_combined_ma(y, tuning, ma,log_latent_transition_kernel_l,log
     ll_all=get_loglikelihood_ma_all(y,tuning,ma)
     log_posterior_all,log_marginal_final,log_prior_curr_all =filter_all_step(ll_all,log_latent_transition_kernel_l,log_dynamics_transition_kernel,carry_init=carry_init,likelihood_scale=likelihood_scale)
     return log_posterior_all,log_marginal_final,log_prior_curr_all
+
+
+def smooth_one_step(carry,x,log_tuning_transition_mat_l,log_non_tuning_transition_mat,prior_magnifier=1):
+    '''
+    causal_prior here refers to the prior from filter, i.e. logp(x_k+1|o_1:k)
+    prior_magnifier not implemented yet
+    '''
+    log_acausal_posterior_next=carry # need "previous" smoother, i.e. next time step (we use next/prev to denote in time here, not in inference steps); 
+    log_causal_posterior_curr,log_causal_prior_next=x
+    # log_causal_prior_next = log_tuning_state_transition_kernel_l + log_non_tuning_transition_kernel + 
+
+    # broadcast things into: (nontuning_curr, nontuning_next, tuning_curr, tuning_next)
+    x_next_given_x_curr_I_next = log_tuning_transition_mat_l[None,:,:,:] # add the nontuning_curr dimension
+    I_next_given_I_curr = log_non_tuning_transition_mat[:,:,None,None] # add the two tuning dimensions
+    post_prior_diff = log_acausal_posterior_next - log_causal_prior_next
+    post_prior_diff = post_prior_diff[None,:,None,:] # add the two curr dimensions
+    
+    inside_integral = x_next_given_x_curr_I_next + I_next_given_I_curr + post_prior_diff + log_causal_posterior_curr
+    log_curr_next_joint = inside_integral # log p(x_k,I_k,x_k+1,I_k+1|O_1:k)
+    log_acausal_posterior_curr = jscipy.special.logsumexp(inside_integral, axis = (1,3)) # logsumexp over the two "next" dimensions
+    to_return = (log_acausal_posterior_curr,log_curr_next_joint)
+
+    return to_return
