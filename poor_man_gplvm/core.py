@@ -12,6 +12,7 @@ from jax.scipy.special import logsumexp
 from poor_man_gplvm import fit_tuning_with_basis as ftwb
 from abc import ABC, abstractmethod
 
+
 '''
 hyperparams = {'tuning_lengthscale':,'movement_variance':,'prior_variance':}
 to model non jump can use the transition matrix
@@ -75,42 +76,8 @@ class AbstractGPLVMJump1D(ABC):
         self.tuning = tuning_init
         return params_init,tuning_init
 
-    def create_transition_prob(self,movement_variance=1,p_move_to_jump=0.01,p_jump_to_move=0.01):
-        '''
-        create the transition probability matrix for the latent and dynamics;
-        this is done at the beginning of the fit; so the hyperparams can be selected easily
-
-        log_latent_transition_kernel_l: n_dynamics x n_latent x n_latent
-        log_dynamics_transition_kernel: n_dynamics x n_dynamics
-        '''
-        # multiple tuning state transition
-        latent_transition_kernel_l = []
-        log_latent_transition_kernel_l=[]
-        latent_transition_kernel_func_l = [gpk.rbf_kernel,gpk.uniform_kernel]
-        latent_transition_kernel_args_l = [
-            [movement_variance,1.],
-            [self.n_latent_bin]
-        ]
-        dynamics_transition_kernel_func = gpk.discrete_transition_kernel
-        
-        for latent_transition_kernel_func,latent_transition_kernel_args in zip(latent_transition_kernel_func_l,
-                                                                                           latent_transition_kernel_args_l
-                                                                                          ):
-            
-            latent_transition_kernel,log_latent_transition_kernel = vmap(vmap(lambda x,y: latent_transition_kernel_func(x,y,*latent_transition_kernel_args),in_axes=(0,None),out_axes=0),out_axes=1,in_axes=(None,0))(self.possible_latent_bin,self.possible_latent_bin)
-            normalizer = latent_transition_kernel.sum(axis=1,keepdims=True)
-            latent_transition_kernel = latent_transition_kernel / normalizer # transition kernel need to be normalized
-            log_latent_transition_kernel = log_latent_transition_kernel - jnp.log(normalizer)
-            latent_transition_kernel_l.append(latent_transition_kernel)
-            log_latent_transition_kernel_l.append(log_latent_transition_kernel)
-        latent_transition_kernel_l = jnp.array(latent_transition_kernel_l) # n_non_tuning_state x n_tuning_state x n_tuning_state
-        log_latent_transition_kernel_l = jnp.array(log_latent_transition_kernel_l)
-
-        # classifier transition
-        dynamics_transition_matrix = jnp.array([[1-p_move_to_jump,p_move_to_jump],[p_jump_to_move,1-p_jump_to_move]])
-        dynamics_transition_kernel,log_dynamics_transition_kernel = vmap(vmap(lambda x,y:dynamics_transition_kernel_func(x,y,dynamics_transition_matrix),in_axes=(0,None),out_axes=0),in_axes=(None,0),out_axes=1)(self.possible_dynamics,self.possible_dynamics) 
-
-        return latent_transition_kernel_l,log_latent_transition_kernel_l,dynamics_transition_kernel,log_dynamics_transition_kernel
+    
+    
 
     def _decode_latent(self,y,log_latent_transition_kernel_l,log_dynamics_transition_kernel,likelihood_scale=1.):
         '''
@@ -174,8 +141,6 @@ class AbstractGPLVMJump1D(ABC):
         latent_l = self.sample_latent(T,key_l[0],movement_variance,p_move_to_jump,p_jump_to_move,init_dynamics,init_latent)
         y_l = self.sample_y(latent_l[:,1],tuning,dt,key_l[1]) # only using the latent and not the dynamics
         return latent_l,y_l
-    
-
     
     
 
