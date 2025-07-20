@@ -30,15 +30,12 @@ def get_loglikelihood_ma(y,tuning,ma,dt=1.):
     
     ll_per_pos = (ll * ma[None,:]).sum(axis=1)
     return ll_per_pos
-# @jit
+@jit
 def get_loglikelihood_ma_all(y_l, tuning, ma):
     
     # ll_per_pos_l = vmap(get_loglikelihood_ma,in_axes=(0,None,None))(y_l,tuning,ma)
     
     # spatio-temporal mask
-    jax.debug.print("y_l.shape: {0}",y_l.shape)
-    jax.debug.print("ma.shape: {0}",ma.shape)
-    jax.debug.print("tuning.shape: {0}",tuning.shape)
     
     ma = jnp.broadcast_to(ma,y_l.shape)
     ll_per_pos_l = vmap(get_loglikelihood_ma,in_axes=(0,None,0))(y_l,tuning,ma)
@@ -209,6 +206,7 @@ def smooth_all_step_combined_ma_chunk(y, tuning,log_latent_transition_kernel_l,l
 
     # spatio-temporal mask
     ma = jnp.broadcast_to(ma,y.shape)
+    print(ma.shape)
     slice_l = []
     for n in range(n_chunks):
         sl = slice((n) * n_time_per_chunk , (n+1) * n_time_per_chunk )
