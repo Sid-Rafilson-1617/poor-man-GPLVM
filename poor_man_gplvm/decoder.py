@@ -30,7 +30,7 @@ def get_loglikelihood_ma(y,tuning,ma,dt=1.):
     
     ll_per_pos = (ll * ma[None,:]).sum(axis=1)
     return ll_per_pos
-@jit
+# @jit
 def get_loglikelihood_ma_all(y_l, tuning, ma):
     
     # ll_per_pos_l = vmap(get_loglikelihood_ma,in_axes=(0,None,None))(y_l,tuning,ma)
