@@ -45,10 +45,14 @@ class AbstractGPLVMJump1D(ABC):
                  w_init_mean=0.,
                  b_init_variance=1.,
                  b_init_mean=0.,
+                 p_move_to_jump=0.01,
+                 p_jump_to_move=0.01,
                  ):
         self.n_latent_bin = n_latent_bin
         self.tuning_lengthscale = tuning_lengthscale
         self.movement_variance = movement_variance
+        self.p_move_to_jump = p_move_to_jump
+        self.p_jump_to_move = p_jump_to_move
         self.explained_variance_threshold_basis = explained_variance_threshold_basis
         self.rng_init_int = rng_init_int
         self.rng_init = jr.PRNGKey(rng_init_int)
