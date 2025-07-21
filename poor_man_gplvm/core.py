@@ -89,7 +89,7 @@ class AbstractGPLVMJump1D(ABC):
         # params_init_b = jax.random.normal(key,(self.n_neuron,)) * jnp.sqrt(self.b_init_variance) + self.b_init_mean
         # params_init = (params_init_w,params_init_b)
         params_init = params_init_w
-        tuning_init = self.get_tuning(params_init,hyperparam={})
+        tuning_init = self.get_tuning(params_init,hyperparam={},tuning_basis=self.tuning_basis)
         self.params = params_init
         self.tuning = tuning_init
         return params_init,tuning_init
