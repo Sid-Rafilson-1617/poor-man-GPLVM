@@ -172,7 +172,10 @@ class GaussianGPLVMJump1D(AbstractGPLVMJump1D):
     """Gaussian GPLVM with jumps.
     The latent governs firing rate; the dynamics governs the transition probabilities between the latent states;
     """
-    
+    def __init__(self,*args,noise_std=0.5,**kwargs):
+        super().__init__(*args,**kwargs)
+        self.noise_std = noise_std
+        
     def loglikelihood(self,y,ypred,hyperparam):
         return jax.scipy.stats.norm.logpdf(y,ypred,hyperparam['noise_std'])
         
