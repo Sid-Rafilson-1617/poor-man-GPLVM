@@ -289,8 +289,8 @@ class PoissonGPLVMJump1D(AbstractGPLVMJump1D):
         log_latent_transition_kernel_l: n_dynamics x n_latent x n_latent
         log_dynamics_transition_kernel: n_dynamics x n_dynamics
         '''
-        log_posterior_all,log_marginal_final,log_prior_curr_all = decoder.smooth_all_step_combined_ma_chunk(y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk,observation_model='poisson')
-        return log_posterior_all,log_marginal_final,log_prior_curr_all
+        log_acausal_posterior_all,log_marginal_final,log_acausal_curr_next_joint_all,log_causal_posterior_all = decoder.smooth_all_step_combined_ma_chunk(y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk,observation_model='poisson')
+        return log_acausal_posterior_all,log_marginal_final,log_acausal_curr_next_joint_all,log_causal_posterior_all
 
 
     def sample_y(self,latent_l,hyperparam={},tuning=None,dt=1.,key=jax.random.PRNGKey(10)):
@@ -326,8 +326,8 @@ class GaussianGPLVMJump1D(AbstractGPLVMJump1D):
         log_latent_transition_kernel_l: n_dynamics x n_latent x n_latent
         log_dynamics_transition_kernel: n_dynamics x n_dynamics
         '''
-        log_posterior_all,log_marginal_final,log_prior_curr_all = decoder.smooth_all_step_combined_ma_chunk(y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk,observation_model='gaussian')
-        return log_posterior_all,log_marginal_final,log_prior_curr_all
+        log_acausal_posterior_all,log_marginal_final,log_acausal_curr_next_joint_all,log_causal_posterior_all = decoder.smooth_all_step_combined_ma_chunk(y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk,observation_model='gaussian')
+        return log_acausal_posterior_all,log_marginal_final,log_acausal_curr_next_joint_all,log_causal_posterior_all
 
 
     def sample_y(self,latent_l,hyperparam={},tuning=None,dt=1.,key=jax.random.PRNGKey(10)):
