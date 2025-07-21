@@ -162,7 +162,14 @@ class AbstractGPLVMJump1D(ABC):
         log_posterior = jnp.log(posterior)
         log_posterior = jnp.where(log_posterior ==-jnp.inf,-1e40,log_posterior)
         return log_posterior,posterior
-
+    
+    @abstractmethod
+    def m_step(self,y,log_posterior_curr,tuning_basis,hyperparam):
+        '''
+        m-step
+        '''
+        pass
+    
     def fit_em(self,y,hyperparam={},key=jax.random.PRNGKey(0),
                     n_iter=20,
                       posterior_init=None,ma_neuron=None,ma_latent=None,n_time_per_chunk=10000,dt=1.,likelihood_scale=1.,
@@ -208,7 +215,7 @@ class AbstractGPLVMJump1D(ABC):
         
         for i in tqdm.trange(n_iter):
             # M-step
-            m_res = self.m_step(y,log_posterior_curr,tuning_basis) # figure out what i need [[]] return tuning since that's what matters
+            m_res = self.m_step(y,log_posterior_curr,tuning_basis,hyperparam) # figure out what i need [[]] return tuning since that's what matters
             params = m_res['params']
             tuning = self.get_tuning(params,hyperparam,tuning_basis)
             # E-step
@@ -234,7 +241,7 @@ class AbstractGPLVMJump1D(ABC):
                   }
         return em_res
 
-        
+
         
 
             
