@@ -195,6 +195,7 @@ class AbstractGPLVMJump1D(ABC):
         log_marginal_saved = []
 
         log_latent_transition_kernel_l,log_dynamics_transition_kernel,_,_ = gpk.create_transition_prob_1d(self.possible_latent_bin,self.possible_dynamics,movement_variance,p_move_to_jump,p_jump_to_move)
+        
         if ma_neuron is None:
             ma_neuron = self.ma_neuron_default
         if ma_latent is None:
@@ -219,6 +220,10 @@ class AbstractGPLVMJump1D(ABC):
             params = m_res['params']
             tuning = self.get_tuning(params,hyperparam,tuning_basis)
             # E-step
+            print(log_latent_transition_kernel_l.shape,log_dynamics_transition_kernel.shape)
+            print(y.shape)
+            print(tuning.shape)
+
             log_posterior_all,log_marginal_final,log_prior_curr_all = self.decode_latent(y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk)
             log_posterior_curr = logsumexp(log_posterior_all,axis=1) # sum over the dynamics dimension; get log posterior over latent
             log_marginal_l.append(log_marginal_final)
