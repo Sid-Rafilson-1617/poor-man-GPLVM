@@ -63,10 +63,14 @@ class AbstractGPLVMJump1D(ABC):
         self.w_init_mean = w_init_mean
         self.b_init_variance = b_init_variance
         self.b_init_mean = b_init_mean
-        
+
         # generate the basis
         self.tuning_basis = generate_basis(self.tuning_lengthscale,self.n_latent_bin,self.explained_variance_threshold_basis)
         self.n_basis = self.tuning_basis.shape[1]
+       
+        # default masks
+        self.ma_neuron_default = jnp.ones(self.n_neuron)
+        self.ma_latent_default = jnp.ones(self.n_latent_bin)
 
         # initialize the params and tuning
         self.initialize_params(self.rng_init)
