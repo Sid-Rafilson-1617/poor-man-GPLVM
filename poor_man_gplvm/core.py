@@ -197,6 +197,6 @@ class GaussianGPLVMJump1D(AbstractGPLVMJump1D):
         noise_std = hyperparam.get('noise_std',self.noise_std)
         rate = tuning[latent_l,:] * dt
         noise_std = noise_std * jnp.sqrt(dt)
-        spk_sim=jax.random.normal(key,rate,noise_std)
+        spk_sim=jax.random.normal(key,shape=rate.shape) * noise_std + rate
         return spk_sim
     
