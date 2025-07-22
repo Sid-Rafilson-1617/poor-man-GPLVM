@@ -197,7 +197,8 @@ def smooth_one_step(carry,x,log_latent_transition_kernel_l,log_dynamics_transiti
     inside_integral = x_next_given_x_curr_I_next + I_next_given_I_curr + post_prior_diff + log_causal_posterior_curr[:,None,:,None] # supply the two next dimensions in broadcast
     log_curr_next_joint = inside_integral # log p(x_k,x_k+1,I_k,I_k+1|O_1:k)
     log_acausal_posterior_curr = jscipy.special.logsumexp(inside_integral, axis = (1,3)) # logsumexp over the two "next" dimensions
-    to_return = (log_acausal_posterior_curr,log_curr_next_joint)
+    # to_return = (log_acausal_posterior_curr,log_curr_next_joint) # the joint is too large, come up with reduced version
+    to_return = log_acausal_posterior_curr
     carry = log_acausal_posterior_curr
 
     return carry,to_return
@@ -225,11 +226,13 @@ def smooth_all_step(log_causal_posterior_all, log_causal_prior_all,log_latent_tr
 
     
     f = partial(smooth_one_step,log_latent_transition_kernel_l=log_latent_transition_kernel_l,log_dynamics_transition_kernel=log_dynamics_transition_kernel)
-    carry_final, (log_acausal_posterior_all,log_acausal_curr_next_joint_all) = scan(f, carry_init, xs=xs,reverse=True)
+    # carry_final, (log_acausal_posterior_all,log_acausal_curr_next_joint_all) = scan(f, carry_init, xs=xs,reverse=True)
+    carry_final, log_acausal_posterior_all = scan(f, carry_init, xs=xs,reverse=True)
     if do_concat:
         log_acausal_posterior_all = jnp.concatenate([log_acausal_posterior_all,log_causal_posterior_all[-1][None,...]],axis=0)
     
-    return log_acausal_posterior_all,log_acausal_curr_next_joint_all
+    # return log_acausal_posterior_all,log_acausal_curr_next_joint_all
+    return log_acausal_posterior_all
 
 def smooth_all_step_combined_ma_chunk(y, tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent=None,likelihood_scale=1,
                                 n_time_per_chunk=10000,observation_model='poisson'
@@ -283,16 +286,17 @@ def smooth_all_step_combined_ma_chunk(y, tuning,hyperparam,log_latent_transition
         log_causal_posterior_all = log_causal_posterior_all_allchunk[n]
         # log_causal_prior_all = log_causal_prior_all_allchunk[n]
         
-        log_acausal_posterior_all,log_acausal_curr_next_joint_all = smooth_all_step(log_causal_posterior_all, log_causal_prior_all,log_latent_transition_kernel_l,log_dynamics_transition_kernel,carry_init=smooth_carry_init)
+        # log_acausal_posterior_all,log_acausal_curr_next_joint_all = smooth_all_step(log_causal_posterior_all, log_causal_prior_all,log_latent_transition_kernel_l,log_dynamics_transition_kernel,carry_init=smooth_carry_init)
+        log_acausal_posterior_all = smooth_all_step(log_causal_posterior_all, log_causal_prior_all,log_latent_transition_kernel_l,log_dynamics_transition_kernel,carry_init=smooth_carry_init)
         smooth_carry_init = log_acausal_posterior_all[0]
 
         log_acausal_posterior_all_allchunk.append(log_acausal_posterior_all)
-        log_acausal_curr_next_joint_all_allchunk.append(log_acausal_curr_next_joint_all)
+        # log_acausal_curr_next_joint_all_allchunk.append(log_acausal_curr_next_joint_all)
     log_acausal_posterior_all_allchunk.reverse() # reverse the order of the chunks
-    log_acausal_curr_next_joint_all_allchunk.reverse() # reverse the order of the chunks
+    # log_acausal_curr_next_joint_all_allchunk.reverse() # reverse the order of the chunks
 
     log_acausal_posterior_all = jnp.concatenate(log_acausal_posterior_all_allchunk,axis=0) 
-    log_acausal_curr_next_joint_all = jnp.concatenate(log_acausal_curr_next_joint_all_allchunk,axis=0)
+    # log_acausal_curr_next_joint_all = jnp.concatenate(log_acausal_curr_next_joint_all_allchunk,axis=0)
     log_causal_posterior_all = jnp.concatenate(log_causal_posterior_all_allchunk,axis=0)
 
-    return log_acausal_posterior_all,log_marginal_final,log_acausal_curr_next_joint_all,log_causal_posterior_all
+    return log_acausal_posterior_all,log_marginal_final,log_causal_posterior_all
