@@ -251,6 +251,8 @@ class AbstractGPLVMJump1D(ABC):
                   'tuning':tuning,
                   'log_posterior_final':log_posterior_all,
                   'log_marginal':log_marginal_final,
+                  'log_marginal_l':log_marginal_l,
+                  'log_marginal_saved':log_marginal_saved,
                   'log_posterior_curr_next_joint_all':log_posterior_curr_next_joint_all, # from this, transition can be derived
                   }
         return em_res
