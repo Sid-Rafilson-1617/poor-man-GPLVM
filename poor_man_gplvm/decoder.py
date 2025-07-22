@@ -210,7 +210,7 @@ def smooth_one_step(carry,x,log_latent_transition_kernel_l,log_dynamics_transiti
     # log_acausal_posterior_curr = log_causal_posterior_curr + inside_integral
     # return log_acausal_posterior_curr,log_acausal_posterior_curr
 
-# @jit
+@jit
 def smooth_all_step(log_causal_posterior_all, log_causal_prior_all,log_latent_transition_kernel_l,log_dynamics_transition_kernel,carry_init=None,):
     '''
     if carry_init is None: i.e. the last chunk, then the last of causal posterior is the first of acausal, scan the rest, and concatenate the two
