@@ -93,24 +93,47 @@ def make_adam_runner(fun, step_size, maxiter=1000, tol=1e-6):
         loss, grads = jax.value_and_grad(fun)(params, *args)
         error = tree_l2_norm(grads)  # or any error metric
 
-        # carry: (iter, params, opt_state, error, loss)
-        carry = (0, params, opt_state, error, loss)
+        # Pre-allocate history arrays (JIT-compatible)
+        loss_history = jnp.zeros(maxiter)
+        error_history = jnp.zeros(maxiter)
+        
+        # Set initial values
+        loss_history = loss_history.at[0].set(loss)
+        error_history = error_history.at[0].set(error)
+
+        # carry: (iter, params, opt_state, error, loss, loss_history, error_history)
+        carry = (0, params, opt_state, error, loss, loss_history, error_history)
 
         def cond_fun(carry):
-            i, params, opt_state, error, loss = carry
-            return (i < maxiter) & (error > tol)
+            i, params, opt_state, error, loss, loss_history, error_history = carry
+            return (i < maxiter - 1) & (error > tol)  # -1 because we start at 0
 
         def body_fun(carry):
-            i, params, opt_state, error, loss = carry
+            i, params, opt_state, error, loss, loss_history, error_history = carry
             loss, grads = jax.value_and_grad(fun)(params, *args)
             updates, new_opt_state = opt.update(grads, opt_state, params)
             new_params = optax.apply_updates(params, updates)
             new_error = tree_l2_norm(grads)
-            return (i + 1, new_params, new_opt_state, new_error, loss)
+            
+            # Update histories
+            new_i = i + 1
+            new_loss_history = loss_history.at[new_i].set(loss)
+            new_error_history = error_history.at[new_i].set(new_error)
+            
+            return (new_i, new_params, new_opt_state, new_error, loss, new_loss_history, new_error_history)
 
         # run the loop
-        i, params, opt_state, error, loss = jax.lax.while_loop(cond_fun, body_fun, carry)
-        adam_res = {'params':params, 'n_iter':i, 'final_loss':loss, 'final_error':error}
+        i, params, opt_state, error, loss, loss_history, error_history = jax.lax.while_loop(cond_fun, body_fun, carry)
+        
+        # Return full arrays with actual length - trimming handled outside JIT for shape stability
+        n_actual_iter = i + 1
+        
+        adam_res = {'params': params, 
+                   'n_iter': n_actual_iter, 
+                   'final_loss': loss, 
+                   'final_error': error,
+                   'loss_history': loss_history,      # Full array (maxiter length)
+                   'error_history': error_history}    # Full array (maxiter length)
         return adam_res
 
     return run

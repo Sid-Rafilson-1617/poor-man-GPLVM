@@ -354,11 +354,18 @@ class PoissonGPLVMJump1D(AbstractGPLVMJump1D):
             param_curr, hyperparam, tuning_basis, y_weighted, t_weighted
         )
         
-        # adam_res is now a dictionary
+        # Trim histories outside JIT to avoid shape issues
+        n_iter = adam_res['n_iter']
+        loss_history_trimmed = adam_res['loss_history'][:n_iter]
+        error_history_trimmed = adam_res['error_history'][:n_iter]
+        
+        # Return trimmed histories
         m_step_res = {'params': adam_res['params'], 
                      'n_iter': adam_res['n_iter'], 
                      'final_loss': adam_res['final_loss'], 
-                     'final_error': adam_res['final_error']}
+                     'final_error': adam_res['final_error'],
+                     'loss_history': loss_history_trimmed,
+                     'error_history': error_history_trimmed}
         return m_step_res
 
     def fit_em(self, y, hyperparam={}, key=jax.random.PRNGKey(0),
