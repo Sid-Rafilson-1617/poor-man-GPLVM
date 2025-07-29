@@ -440,7 +440,7 @@ class GaussianGPLVMJump1D(AbstractGPLVMJump1D):
         '''
         y_weighted,t_weighted = fth.get_statistics(log_posterior_curr,y)
         params_new = fth.gaussian_m_step_analytic(hyperparam,tuning_basis,y_weighted,t_weighted)
-        m_step_res = {'params':params_new,'opt_state':None}}
+        m_step_res = {'params':params_new,'opt_state':None}
         return m_step_res
 
     def fit_em(self,y,hyperparam={},key=jax.random.PRNGKey(0),
