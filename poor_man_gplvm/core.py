@@ -98,8 +98,9 @@ class AbstractGPLVMJump1D(ABC):
         self.tuning = tuning_init
         return params_init,tuning_init
 
+    # this is called by the fit_em function; the transition matrices are given so that they are not recomputed every time
     @abstractmethod
-    def decode_latent(self,y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000):
+    def _decode_latent(self,y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000):
         '''
         decode the latent and dynamics
         y: observed data, spike counts here; n_time x n_neuron
@@ -108,6 +109,14 @@ class AbstractGPLVMJump1D(ABC):
         log_dynamics_transition_kernel: n_dynamics x n_dynamics
         '''
         pass
+    
+    # this is a more convenient call after fitting; hyperparam is used when available, if not then use the self.xxx
+    def decode_latent(self,y,tuning,hyperparam,ma_neuron,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000):
+        movement_variance = hyperparam.get('movement_variance',self.movement_variance)
+        p_move_to_jump = hyperparam.get('p_move_to_jump',self.p_move_to_jump)
+        p_jump_to_move = hyperparam.get('p_jump_to_move',self.p_jump_to_move)
+        latent_transition_kernel_l,log_latent_transition_kernel_l,dynamics_transition_kernel,log_dynamics_transition_kernel = gpk.create_transition_prob_1d(self.possible_latent_bin,self.possible_dynamics,movement_variance,p_move_to_jump,p_jump_to_move)
+        return self._decode_latent(y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent=ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk)
 
 
     def sample_latent(self,T,key=jax.random.PRNGKey(0),movement_variance=1,p_move_to_jump=0.01,p_jump_to_move=0.01,
