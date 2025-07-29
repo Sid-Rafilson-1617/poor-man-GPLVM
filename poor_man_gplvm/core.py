@@ -177,7 +177,7 @@ class AbstractGPLVMJump1D(ABC):
     def fit_em(self,y,hyperparam={},key=jax.random.PRNGKey(0),
                     n_iter=20,
                       posterior_init=None,opt_state_curr=None,ma_neuron=None,ma_latent=None,n_time_per_chunk=10000,dt=1.,likelihood_scale=1.,
-                      save_every=None,
+                      save_every=None,posterior_init_kwargs={'random_scale':0.1},
                       **kwargs):
         '''
         fit the model using EM
@@ -212,7 +212,7 @@ class AbstractGPLVMJump1D(ABC):
             tuning_basis = self.tuning_basis
         
         if posterior_init is None:
-            log_posterior_init,posterior_init = self.init_latent_posterior(y.shape[0],key)
+            log_posterior_init,posterior_init = self.init_latent_posterior(y.shape[0],key,**posterior_init_kwargs)
             key,_=jax.random.split(key,2)
         
         log_posterior_curr = log_posterior_init
