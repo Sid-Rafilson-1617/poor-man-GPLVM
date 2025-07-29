@@ -40,7 +40,7 @@ def get_statistics(log_posterior_probs,y,):
     return y_weighted, t_weighted
 
 @jit
-def gaussian_m_step_analytic(basis_mat,y_weighted,t_weighted,noise_stddev):
+def gaussian_m_step_analytic(hyperparam,basis_mat,y_weighted,t_weighted):
     '''
     basis_mat: n_latent x n_basis
     y_weighted: n_latent x n_neuron
@@ -49,10 +49,77 @@ def gaussian_m_step_analytic(basis_mat,y_weighted,t_weighted,noise_stddev):
     '''
     n_latent,n_basis = basis_mat.shape
     n_neuron = y_weighted.shape[1]
-    noise_var = noise_stddev**2
+    noise_var = hyperparam['noise_std']**2
+    param_prior_std = hyperparam['param_prior_std']
 
     G = jnp.einsum('qd,q,qb->db',basis_mat,t_weighted,basis_mat)
-    H = G / noise_var + jnp.eye(n_basis)    # compute the covariance matrix
+    H = G / noise_var + jnp.eye(n_basis) / (param_prior_std**2)    # compute the covariance matrix
     RHS = basis_mat.T @ y_weighted / noise_var
     w = jnp.linalg.solve(H,RHS)
     return w
+
+def poisson_m_step_objective(param,hyperparam,basis_mat,y_weighted,t_weighted):
+    '''
+    param: n_basis x n_neuron
+    basis_mat: n_latent x n_basis
+    y_weighted: n_latent x n_neuron
+    t_weighted: n_latent
+    
+    return:
+    negative log joint
+    '''
+    param_prior_std = hyperparam['param_prior_std']
+    yhat = get_tuning_softplus(param,basis_mat) # n_latent x n_neuron
+    log_likelihood = jax.scipy.stats.poisson.logpmf(y_weighted,yhat * t_weighted[:,None]).sum()
+    log_prior = jax.scipy.stats.norm.logpdf(param,0,param_prior_std).sum()
+    return -log_likelihood - log_prior
+
+import optax
+from jax import tree_util
+
+def make_adam_runner(fun, step_size, maxiter=1000, tol=1e-6):
+    '''
+    make a function that run adam optimizer with a given objective function
+    '''
+    # fun(params, *args) -> loss scalar
+    opt = optax.adam(step_size)
+
+    @jax.jit
+    def run(init_params, *args):
+        # initialize
+        params = init_params
+        opt_state = opt.init(params)
+        # compute initial error (e.g. gradient norm)
+        loss, grads = jax.value_and_grad(fun)(params, *args)
+        error = tree_l2_norm(grads)  # or any error metric
+
+        # carry: (iter, params, opt_state, error, loss)
+        carry = (0, params, opt_state, error, loss)
+
+        def cond_fun(carry):
+            i, params, opt_state, error, loss = carry
+            return (i < maxiter) & (error > tol)
+
+        def body_fun(carry):
+            i, params, opt_state, error, loss = carry
+            loss, grads = jax.value_and_grad(fun)(params, *args)
+            updates, new_opt_state = opt.update(grads, opt_state, params)
+            new_params = optax.apply_updates(params, updates)
+            new_error = tree_l2_norm(grads)
+            return (i + 1, new_params, new_opt_state, new_error, loss)
+
+        # run the loop
+        i, params, opt_state, error, loss = jax.lax.while_loop(cond_fun, body_fun, carry)
+        adam_res = {'params':params, 'n_iter':i, 'final_loss':loss, 'final_error':error}
+        return adam_res
+
+    return run
+
+
+def tree_l2_norm(tree_x, squared=False):
+    # Square each leaf 
+    squared_tree = tree_util.tree_map(lambda leaf: jnp.sum(jnp.square(leaf)), tree_x)
+    # Sum up all squares across the pytree
+    sqnorm = tree_util.tree_reduce(jnp.add, squared_tree)
+    # Return either the squared norm or its square root
+    return sqnorm if squared else jnp.sqrt(sqnorm)
