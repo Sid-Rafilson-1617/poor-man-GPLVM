@@ -245,7 +245,7 @@ class AbstractGPLVMJump1D(ABC):
             
             tuning = self.get_tuning(params,hyperparam,tuning_basis)
             # E-step
-            log_posterior_all,log_marginal_final,log_causal_posterior_all = self.decode_latent(y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk)
+            log_posterior_all,log_marginal_final,log_causal_posterior_all = self._decode_latent(y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk)
 
             log_posterior_curr = logsumexp(log_posterior_all,axis=1) # sum over the dynamics dimension; get log posterior over latent
             log_marginal_l.append(log_marginal_final)
