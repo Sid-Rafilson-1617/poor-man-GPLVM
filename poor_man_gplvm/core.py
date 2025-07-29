@@ -227,7 +227,7 @@ class AbstractGPLVMJump1D(ABC):
             if i==0:
                 m_step_res_l = {k:[] for k in m_res.keys()}
             for k in m_res.keys():
-                if k not in ['params']:  # Don't save params in history
+                if k not in ['params','opt_state']:  # Don't save params in history
                     m_step_res_l[k].append(m_res[k])
             
             params = m_res['params']
