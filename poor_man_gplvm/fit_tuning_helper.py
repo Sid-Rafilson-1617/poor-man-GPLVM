@@ -80,15 +80,16 @@ from jax import tree_util
 def make_adam_runner(fun, step_size, maxiter=1000, tol=1e-6):
     '''
     make a function that run adam optimizer with a given objective function
+    
     '''
     # fun(params, *args) -> loss scalar
     opt = optax.adam(step_size)
-
+    init_fun = opt.init
     @jax.jit
-    def run(init_params, *args):
-        # initialize
+    def run(init_params, opt_state, *args):
+        # Always receives a valid optimizer state (initialization handled outside)
         params = init_params
-        opt_state = opt.init(params)
+        
         # compute initial error (e.g. gradient norm)
         loss, grads = jax.value_and_grad(fun)(params, *args)
         error = tree_l2_norm(grads)  # or any error metric
@@ -129,6 +130,7 @@ def make_adam_runner(fun, step_size, maxiter=1000, tol=1e-6):
         n_actual_iter = i + 1
         
         adam_res = {'params': params, 
+                   'opt_state': opt_state,         # Return updated optimizer state
                    'n_iter': n_actual_iter, 
                    'final_loss': loss, 
                    'final_error': error,
@@ -136,7 +138,7 @@ def make_adam_runner(fun, step_size, maxiter=1000, tol=1e-6):
                    'error_history': error_history}    # Full array (maxiter length)
         return adam_res
 
-    return run
+    return run, init_fun
 
 
 def tree_l2_norm(tree_x, squared=False):

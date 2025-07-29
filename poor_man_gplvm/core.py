@@ -168,7 +168,7 @@ class AbstractGPLVMJump1D(ABC):
         return log_posterior,posterior
     
     @abstractmethod
-    def m_step(self,param_curr,y,log_posterior_curr,tuning_basis,hyperparam):
+    def m_step(self, param_curr, y, log_posterior_curr, tuning_basis, hyperparam, opt_state_curr=None):
         '''
         m-step
         '''
@@ -176,7 +176,7 @@ class AbstractGPLVMJump1D(ABC):
     
     def fit_em(self,y,hyperparam={},key=jax.random.PRNGKey(0),
                     n_iter=20,
-                      posterior_init=None,ma_neuron=None,ma_latent=None,n_time_per_chunk=10000,dt=1.,likelihood_scale=1.,
+                      posterior_init=None,opt_state_curr=None,ma_neuron=None,ma_latent=None,n_time_per_chunk=10000,dt=1.,likelihood_scale=1.,
                       save_every=None,
                       **kwargs):
         '''
@@ -219,15 +219,21 @@ class AbstractGPLVMJump1D(ABC):
         log_marginal_l = []
         m_step_res_l = {}
         params = self.params
+        
+        
         for i in tqdm.trange(n_iter):
-            # M-step
-            m_res = self.m_step(params,y,log_posterior_curr,tuning_basis,hyperparam) # figure out what i need [[]] return tuning since that's what matters
+            # M-step with optimizer state continuity
+            m_res = self.m_step(params, y, log_posterior_curr, tuning_basis, hyperparam, opt_state_curr=opt_state_curr)
             if i==0:
                 m_step_res_l = {k:[] for k in m_res.keys()}
             for k in m_res.keys():
-                if k!='params':
+                if k not in ['params', 'opt_state']:  # Don't save params/opt_state in history
                     m_step_res_l[k].append(m_res[k])
+            
             params = m_res['params']
+            # Update optimizer state for next iteration (if available)
+            opt_state_curr = m_res.get('opt_state', None)
+            
             tuning = self.get_tuning(params,hyperparam,tuning_basis)
             # E-step
             log_posterior_all,log_marginal_final,log_causal_posterior_all = self.decode_latent(y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk)
@@ -342,16 +348,16 @@ class PoissonGPLVMJump1D(AbstractGPLVMJump1D):
         spk_sim=jax.random.poisson(key,rate * dt)
         return spk_sim
     
-    def m_step(self,param_curr,y,log_posterior_curr,tuning_basis,hyperparam):
+    def m_step(self, param_curr, y, log_posterior_curr, tuning_basis, hyperparam, opt_state_curr=None):
         '''
-        m-step
+        m-step with optimizer state continuity
+        opt_state_curr: Previous optimizer state (initialized in fit_em)
         '''
         y_weighted,t_weighted = fth.get_statistics(log_posterior_curr,y)
         
-        
-        # Run Adam optimization (adam_runner should be created in fit_em)
+        # Run Adam optimization with provided state
         adam_res = self.adam_runner(
-            param_curr, hyperparam, tuning_basis, y_weighted, t_weighted
+            param_curr, opt_state_curr, hyperparam, tuning_basis, y_weighted, t_weighted
         )
         
         # Trim histories outside JIT to avoid shape issues
@@ -359,8 +365,9 @@ class PoissonGPLVMJump1D(AbstractGPLVMJump1D):
         loss_history_trimmed = adam_res['loss_history'][:n_iter]
         error_history_trimmed = adam_res['error_history'][:n_iter]
         
-        # Return trimmed histories
+        # Return trimmed histories + updated optimizer state
         m_step_res = {'params': adam_res['params'], 
+                     'opt_state': adam_res['opt_state'],  # Return updated state
                      'n_iter': adam_res['n_iter'], 
                      'final_loss': adam_res['final_loss'], 
                      'final_error': adam_res['final_error'],
@@ -377,14 +384,14 @@ class PoissonGPLVMJump1D(AbstractGPLVMJump1D):
         hyperparam['param_prior_std'] = hyperparam.get('param_prior_std', self.param_prior_std)
         
         # create the adam runner
-        self.adam_runner = fth.make_adam_runner(
+        self.adam_runner,opt_state_init_fun = fth.make_adam_runner(
             fth.poisson_m_step_objective, 
             step_size=m_step_step_size, 
             maxiter=m_step_maxiter, 
             tol=m_step_tol
         )
-        
-        em_res = super(PoissonGPLVMJump1D, self).fit_em(y, hyperparam=hyperparam, key=key, n_iter=n_iter, posterior_init=posterior_init, ma_neuron=ma_neuron, ma_latent=ma_latent, n_time_per_chunk=n_time_per_chunk, dt=dt, likelihood_scale=likelihood_scale, save_every=save_every, **kwargs)
+        opt_state_curr = opt_state_init_fun(self.params)
+        em_res = super(PoissonGPLVMJump1D, self).fit_em(y, hyperparam=hyperparam, key=key, n_iter=n_iter, posterior_init=posterior_init, ma_neuron=ma_neuron, ma_latent=ma_latent, n_time_per_chunk=n_time_per_chunk, dt=dt, likelihood_scale=likelihood_scale, save_every=save_every, opt_state_curr=opt_state_curr,**kwargs)
         return em_res
 
 
@@ -427,13 +434,13 @@ class GaussianGPLVMJump1D(AbstractGPLVMJump1D):
         spk_sim=jax.random.normal(key,shape=rate.shape) * noise_std + rate
         return spk_sim
     
-    def m_step(self,param_curr,y,log_posterior_curr,tuning_basis,hyperparam):
+    def m_step(self, param_curr, y, log_posterior_curr, tuning_basis, hyperparam, opt_state_curr=None):
         '''
-        m-step
+        m-step (Gaussian case doesn't use optimizer state)
         '''
         y_weighted,t_weighted = fth.get_statistics(log_posterior_curr,y)
         params_new = fth.gaussian_m_step_analytic(hyperparam,tuning_basis,y_weighted,t_weighted)
-        m_step_res = {'params':params_new}
+        m_step_res = {'params':params_new,'opt_state':None}}
         return m_step_res
 
     def fit_em(self,y,hyperparam={},key=jax.random.PRNGKey(0),
