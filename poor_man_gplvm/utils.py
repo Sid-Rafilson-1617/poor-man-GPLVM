@@ -61,9 +61,11 @@ def post_fit_sort_neuron(fit_res,spk=None,do_norm='max',method='tuning_peak'):
             spk_to_plot = spk
         else:
             raise ValueError(f"Invalid normalization method: {do_norm}")
+        spk_no_sort = spk_to_plot # no sort but with normalization
         spk_to_plot = spk_to_plot[:,argsort]
     to_return = {}
     to_return['spk_to_plot'] = spk_to_plot
+    to_return['spk_no_sort'] = spk_no_sort
     to_return['argsort'] = argsort
     return to_return
 
