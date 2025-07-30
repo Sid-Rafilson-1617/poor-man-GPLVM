@@ -58,7 +58,10 @@ def evaluate_model_one_config(model_fit_l,y_test,key=jr.PRNGKey(1)):
     - best overall metric
     - best model index
     '''
-    pass
+    model_eval_result = {}
+    for model_fit in model_fit_l:
+        model_eval_result[model_fit] = model_fit.decode_latent(y_test)
+    return model_eval_result
 
 def model_selection_one_split(y,hyperparam_dict,train_index=None,test_index=None,test_frac=0.2,key = jr.PRNGKey(0),model_to_return_type='best_overall',**kwargs):
     '''

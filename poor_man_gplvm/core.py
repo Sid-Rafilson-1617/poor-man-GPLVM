@@ -111,7 +111,9 @@ class AbstractGPLVMJump1D(ABC):
         pass
     
     # this is a more convenient call after fitting; hyperparam is used when available, if not then use the self.xxx
-    def decode_latent(self,y,tuning,hyperparam,ma_neuron,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000):
+    def decode_latent(self,y,tuning=None,hyperparam={},ma_neuron=None,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000):
+        if tuning is None:
+            tuning = self.tuning
         movement_variance = hyperparam.get('movement_variance',self.movement_variance)
         p_move_to_jump = hyperparam.get('p_move_to_jump',self.p_move_to_jump)
         p_jump_to_move = hyperparam.get('p_jump_to_move',self.p_jump_to_move)
@@ -439,6 +441,9 @@ class GaussianGPLVMJump1D(AbstractGPLVMJump1D):
         # return log_acausal_posterior_all,log_marginal_final,log_acausal_curr_next_joint_all,log_causal_posterior_all
         return log_acausal_posterior_all,log_marginal_final,log_causal_posterior_all
 
+    def decode_latent(self,y,tuning=None,hyperparam={},ma_neuron=None,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000):
+        hyperparam['noise_std'] = hyperparam.get('noise_std',self.noise_std)
+        return super(GaussianGPLVMJump1D,self).decode_latent(y,tuning=tuning,hyperparam=hyperparam,ma_neuron=ma_neuron,ma_latent=ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk)
 
     def sample_y(self,latent_l,hyperparam={},tuning=None,dt=1.,key=jax.random.PRNGKey(10)):
         if tuning is None:
