@@ -192,7 +192,7 @@ class AbstractGPLVMJump1D(ABC):
     
     def fit_em(self,y,hyperparam={},key=jax.random.PRNGKey(0),
                     n_iter=20,
-                      posterior_init=None,opt_state_curr=None,ma_neuron=None,ma_latent=None,n_time_per_chunk=10000,dt=1.,likelihood_scale=1.,
+                      log_posterior_init=None,opt_state_curr=None,ma_neuron=None,ma_latent=None,n_time_per_chunk=10000,dt=1.,likelihood_scale=1.,
                       save_every=None,posterior_init_kwargs={'random_scale':0.1},
                       **kwargs):
         '''
@@ -233,7 +233,7 @@ class AbstractGPLVMJump1D(ABC):
         else:
             tuning_basis = self.tuning_basis
         
-        if posterior_init is None:
+        if log_posterior_init is None:
             log_posterior_init,posterior_init = self.init_latent_posterior(y.shape[0],key,**posterior_init_kwargs)
             key,_=jax.random.split(key,2)
         
@@ -398,7 +398,7 @@ class PoissonGPLVMJump1D(AbstractGPLVMJump1D):
         return m_step_res
 
     def fit_em(self, y, hyperparam={}, key=jax.random.PRNGKey(0),
-               n_iter=20, posterior_init=None, ma_neuron=None, ma_latent=None, 
+               n_iter=20, log_posterior_init=None, ma_neuron=None, ma_latent=None, 
                n_time_per_chunk=10000, dt=1., likelihood_scale=1.,
                save_every=None, 
                m_step_step_size=0.01, m_step_maxiter=1000, m_step_tol=1e-6,
@@ -413,7 +413,7 @@ class PoissonGPLVMJump1D(AbstractGPLVMJump1D):
             tol=m_step_tol
         )
         opt_state_curr = opt_state_init_fun(self.params)
-        em_res = super(PoissonGPLVMJump1D, self).fit_em(y, hyperparam=hyperparam, key=key, n_iter=n_iter, posterior_init=posterior_init, ma_neuron=ma_neuron, ma_latent=ma_latent, n_time_per_chunk=n_time_per_chunk, dt=dt, likelihood_scale=likelihood_scale, save_every=save_every, opt_state_curr=opt_state_curr,**kwargs)
+        em_res = super(PoissonGPLVMJump1D, self).fit_em(y, hyperparam=hyperparam, key=key, n_iter=n_iter, log_posterior_init=log_posterior_init, ma_neuron=ma_neuron, ma_latent=ma_latent, n_time_per_chunk=n_time_per_chunk, dt=dt, likelihood_scale=likelihood_scale, save_every=save_every, opt_state_curr=opt_state_curr,**kwargs)
         return em_res
 
 
@@ -470,12 +470,12 @@ class GaussianGPLVMJump1D(AbstractGPLVMJump1D):
 
     def fit_em(self,y,hyperparam={},key=jax.random.PRNGKey(0),
                     n_iter=20,
-                      posterior_init=None,ma_neuron=None,ma_latent=None,n_time_per_chunk=10000,dt=1.,likelihood_scale=1.,
+                      log_posterior_init=None,ma_neuron=None,ma_latent=None,n_time_per_chunk=10000,dt=1.,likelihood_scale=1.,
                       save_every=None,
                       **kwargs):
         hyperparam['noise_std'] = hyperparam.get('noise_std',self.noise_std)
         hyperparam['param_prior_std'] = hyperparam.get('param_prior_std',self.param_prior_std)
-        em_res=super(GaussianGPLVMJump1D,self).fit_em(y,hyperparam,key,n_iter,posterior_init,ma_neuron,ma_latent,n_time_per_chunk,dt,likelihood_scale,save_every,**kwargs)
+        em_res=super(GaussianGPLVMJump1D,self).fit_em(y,hyperparam,key,n_iter,log_posterior_init,ma_neuron,ma_latent,n_time_per_chunk,dt,likelihood_scale,save_every,**kwargs)
         return em_res
     
 from sklearn.decomposition import PCA
