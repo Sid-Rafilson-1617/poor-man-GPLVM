@@ -77,11 +77,15 @@ def evaluate_model_one_config(model_fit_l,y_test,key=jr.PRNGKey(1),latent_downsa
             model_eval_result['downsampled_lml_'+str(downsample_frac)]['value_per_fit'].append(ds_lml_result['value'])
         model_eval_result['downsampled_lml_'+str(downsample_frac)]['value_per_fit'] = np.array(model_eval_result['downsampled_lml_'+str(downsample_frac)]['value_per_fit'])
     
-    # for now testing; metric_overall is the same as log_marginal_test
+    # for now testing; metric_overall is the average of downsampled lml
     model_eval_result['metric_overall'] = {'value_per_fit':[],'best_value':None,'best_index':None}
-    model_eval_result['metric_overall']['value_per_fit'] = model_eval_result['log_marginal_test']['value_per_fit']
+    # model_eval_result['metric_overall']['value_per_fit'] = model_eval_result['log_marginal_test']['value_per_fit']
     # model_eval_result['metric_overall']['value_per_fit'] = model_eval_result['downsampled_lml']['value_per_fit']
-
+    value_per_fit = np.zeros(len(model_fit_l))
+    for downsample_frac in latent_downsample_frac:
+        value_per_fit += model_eval_result['downsampled_lml_'+str(downsample_frac)]['value_per_fit']
+    value_per_fit /= len(latent_downsample_frac)
+    model_eval_result['metric_overall']['value_per_fit'] = value_per_fit
     
 
     for k in model_eval_result.keys():
@@ -167,7 +171,7 @@ def model_selection_one_split(y,hyperparam_dict,train_index=None,test_index=None
         model_to_return_l = [best_model]
     elif model_to_return_type == 'best_config':
         model_to_return_l = [best_model_l]
-    
+    model_eval_result_all_configs = pd.DataFrame(model_eval_result_all_configs)
     model_selection_res = {'model_to_return_l':model_to_return_l,'best_config':best_config,'best_model':best_model,'best_model_l':best_model_l,'model_eval_result_all_configs':model_eval_result_all_configs}
     
 
