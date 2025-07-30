@@ -29,7 +29,7 @@ def generate_hyperparam_grid(hyperparam_ranges: Dict[str, List]) -> List[Dict[st
     hyper_grid_df = pd.DataFrame(hyper_grid_l)
     return hyper_grid_l,hyper_grid_df
 
-def fit_model_one_config(config,y_train,key=jr.PRNGKey(0),fit_kwargs=default_fit_kwargs,model_class_str='poisson',n_repeat = 1,**kwargs):
+def fit_model_one_config(config,y_train,key=jr.PRNGKey(0),fit_kwargs=default_fit_kwargs,model_class_str='poisson',n_repeat = 1):
     '''
     create and fit the model with the given config
     fit_kwargs: dict of kwargs for the fit_em function
@@ -76,7 +76,7 @@ def evaluate_model_one_config(model_fit_l,y_test,key=jr.PRNGKey(1)):
         model_eval_result[k]['best_index'] = np.argmax(model_eval_result[k]['value_per_fit'])
     return model_eval_result
 
-def model_selection_one_split(y,hyperparam_dict,train_index=None,test_index=None,test_frac=0.2,key = jr.PRNGKey(0),model_to_return_type='best_overall',**kwargs):
+def model_selection_one_split(y,hyperparam_dict,train_index=None,test_index=None,test_frac=0.2,key = jr.PRNGKey(0),model_to_return_type='best_overall',fit_kwargs=default_fit_kwargs,model_class_str='poisson',n_repeat = 1):
     '''
     for one split of data, fit and evaluate the models given by all configs
     model_to_return_type: 
@@ -112,7 +112,7 @@ def model_selection_one_split(y,hyperparam_dict,train_index=None,test_index=None
     for param_dict in param_grid_l: 
         key,_ = jr.split(key)
         key_fit,key_eval = jr.split(key)
-        model_fit_l = fit_model_one_config(param_dict,y_train,key=key_fit,**kwargs)
+        model_fit_l = fit_model_one_config(param_dict,y_train,key=key_fit,fit_kwargs=fit_kwargs,model_class_str=model_class_str,n_repeat=n_repeat)
         model_eval_result = evaluate_model_one_config(model_fit_l,y_test,key=key_eval)
         # append the best metrics to the result
         if model_eval_result_all_configs == {}:
