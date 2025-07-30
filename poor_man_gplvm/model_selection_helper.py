@@ -5,7 +5,8 @@ import itertools
 import pandas as pd
 from typing import Dict, List, Any
 from poor_man_gplvm import PoissonGPLVMJump1D,GaussianGPLVMJump1D
-import jax.random as jr
+import jax.random as jr 
+import numpy as np
 
 model_class_dict = {'poisson':PoissonGPLVMJump1D,'gaussian':GaussianGPLVMJump1D}
 
@@ -59,8 +60,16 @@ def evaluate_model_one_config(model_fit_l,y_test,key=jr.PRNGKey(1)):
     - best model index
     '''
     model_eval_result = {}
+
+    model_eval_result['log_marginal_test'] = {'value_per_fit':[],'best_value':None,'best_index':None}
     for model_fit in model_fit_l:
-        model_eval_result[model_fit] = model_fit.decode_latent(y_test)
+        log_posterior_all,log_marginal_final,log_causal_posterior_all = model_fit.decode_latent(y_test)
+        model_eval_result['log_marginal_test']['value_per_fit'].append(log_marginal_final)
+    model_eval_result['log_marginal_test']['value_per_fit'] = np.array(model_eval_result['log_marginal_test']['value_per_fit'])
+    
+    for k in model_eval_result.keys():
+        model_eval_result[k]['best_value'] = np.max(model_eval_result[k]['value_per_fit'])
+        model_eval_result[k]['best_index'] = np.argmax(model_eval_result[k]['value_per_fit'])
     return model_eval_result
 
 def model_selection_one_split(y,hyperparam_dict,train_index=None,test_index=None,test_frac=0.2,key = jr.PRNGKey(0),model_to_return_type='best_overall',**kwargs):
