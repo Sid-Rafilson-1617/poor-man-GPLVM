@@ -341,7 +341,7 @@ class PoissonGPLVMJump1D(AbstractGPLVMJump1D):
         return tuning
         
 
-    def decode_latent(self,y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000):
+    def _decode_latent(self,y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000):
         '''
         decode the latent and dynamics
         y: observed data, spike counts here; n_time x n_neuron
@@ -426,7 +426,7 @@ class GaussianGPLVMJump1D(AbstractGPLVMJump1D):
         return tuning
         
 
-    def decode_latent(self,y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000):
+    def _decode_latent(self,y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000):
         '''
         decode the latent and dynamics
         y: observed data, spike counts here; n_time x n_neuron
