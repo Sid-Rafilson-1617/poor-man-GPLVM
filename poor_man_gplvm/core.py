@@ -114,6 +114,11 @@ class AbstractGPLVMJump1D(ABC):
     def decode_latent(self,y,tuning=None,hyperparam={},ma_neuron=None,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000):
         if tuning is None:
             tuning = self.tuning
+        if ma_neuron is None:
+            ma_neuron = self.ma_neuron_default
+        if ma_latent is None:
+            ma_latent = self.ma_latent_default
+        
         movement_variance = hyperparam.get('movement_variance',self.movement_variance)
         p_move_to_jump = hyperparam.get('p_move_to_jump',self.p_move_to_jump)
         p_jump_to_move = hyperparam.get('p_jump_to_move',self.p_jump_to_move)
