@@ -1,7 +1,7 @@
 """Utility functions for the Poor Man's GPLVM."""
 
 import numpy as np
-
+import pynapple as nap
 
 def rbf_kernel(X, Y=None, length_scale=1.0):
     """Radial Basis Function kernel.
@@ -40,10 +40,11 @@ def rbf_kernel(X, Y=None, length_scale=1.0):
 
 
 # post fit neuron sorting + normalization; used in post fit visualization
-def post_fit_sort_neuron(fit_res,spk=None,do_norm='max',method='tuning_peak'):
+def post_fit_sort_neuron(fit_res,spk=None,do_norm='max',method='tuning_peak',t_l=None):
     '''
     fit result: can include tuning or posterior, depending on the sorting method
     spk: binned spike: n_time x n_neuron, if not provided, then only return the argsort; if provided, return the sorted and optionally normalized spk
+    # if t_l (timestamps) is provided, return a TsdFrame
     '''
     if method == 'tuning_peak':
         assert 'tuning' in fit_res, "Tuning is not in the fit result"
@@ -63,6 +64,10 @@ def post_fit_sort_neuron(fit_res,spk=None,do_norm='max',method='tuning_peak'):
             raise ValueError(f"Invalid normalization method: {do_norm}")
         spk_no_sort = spk_to_plot # no sort but with normalization
         spk_to_plot = spk_to_plot[:,argsort]
+        if t_l is not None: 
+            spk_to_plot = nap.TsdFrame(d=spk_to_plot,t=t_l)
+            spk_no_sort = nap.TsdFrame(d=spk_no_sort,t=t_l)
+
     to_return = {}
     to_return['spk_to_plot'] = spk_to_plot
     to_return['spk_no_sort'] = spk_no_sort
