@@ -65,8 +65,8 @@ def evaluate_model_one_config(model_fit_l,y_test,key=jr.PRNGKey(1),latent_downsa
     # metric: log_marginal_test
     model_eval_result['log_marginal_test'] = {'value_per_fit':[],'best_value':None,'best_index':None}
     for model_fit in model_fit_l:
-        log_posterior_all,log_marginal_final,log_causal_posterior_all = model_fit.decode_latent(y_test)
-        model_eval_result['log_marginal_test']['value_per_fit'].append(log_marginal_final)
+        decoding_res = model_fit.decode_latent(y_test)
+        model_eval_result['log_marginal_test']['value_per_fit'].append(decoding_res['log_marginal_final'])
     model_eval_result['log_marginal_test']['value_per_fit'] = np.array(model_eval_result['log_marginal_test']['value_per_fit'])
     
     # metric: downsampled_lml
@@ -193,8 +193,8 @@ def get_downsampled_lml(model_fit,y_test,downsample_frac=0.2,n_repeat=10,key=jr.
         # generate latent mask with n_latent_bin length and only n_latent_to_select are 1
         latent_mask = jnp.zeros(model_fit.n_latent_bin)
         latent_mask = latent_mask.at[jr.choice(key,model_fit.n_latent_bin,shape=(n_latent_to_select,),replace=False)].set(1)
-        log_posterior_all,log_marginal_final,log_causal_posterior_all = model_fit.decode_latent(y_test,ma_latent=latent_mask,**kwargs)
-        lml_l.append(log_marginal_final)
+        decoding_res = model_fit.decode_latent(y_test,ma_latent=latent_mask,**kwargs)
+        lml_l.append(decoding_res['log_marginal_final'])
     ds_lml_mean = np.mean(lml_l)
     ds_lml_std = np.std(lml_l)
     ds_lml_result = {'value':ds_lml_mean,'std':ds_lml_std}

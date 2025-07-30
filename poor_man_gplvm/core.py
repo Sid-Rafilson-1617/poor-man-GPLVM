@@ -124,7 +124,15 @@ class AbstractGPLVMJump1D(ABC):
         p_jump_to_move = hyperparam.get('p_jump_to_move',self.p_jump_to_move)
         latent_transition_kernel_l,log_latent_transition_kernel_l,dynamics_transition_kernel,log_dynamics_transition_kernel = gpk.create_transition_prob_1d(self.possible_latent_bin,self.possible_dynamics,movement_variance,p_move_to_jump,p_jump_to_move)
         log_posterior_all,log_marginal_final,log_causal_posterior_all= self._decode_latent(y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent=ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk)
-        return log_posterior_all,log_marginal_final,log_causal_posterior_all
+        posterior_all = np.exp(log_posterior_all)
+        posterior_latent_marg = posterior_all.sum(axis=1)
+        posterior_dynamics_marg = posterior_all.sum(axis=2)
+        decoding_res = {'log_posterior_all':np.array(log_posterior_all),
+                        'log_marginal_final':log_marginal_final.item(),
+                        'posterior_all':posterior_all,
+                        'posterior_latent_marg':posterior_latent_marg,
+                        'posterior_dynamics_marg':posterior_dynamics_marg}
+        return decoding_res
 
     def sample_latent(self,T,key=jax.random.PRNGKey(0),movement_variance=1,p_move_to_jump=0.01,p_jump_to_move=0.01,
                       init_dynamics=None,init_latent=None):
