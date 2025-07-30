@@ -171,8 +171,10 @@ def model_selection_one_split(y,hyperparam_dict,train_index=None,test_index=None
         model_to_return_l = [best_model]
     elif model_to_return_type == 'best_config':
         model_to_return_l = [best_model_l]
-    model_eval_result_all_configs = pd.DataFrame(model_eval_result_all_configs)
-    model_selection_res = {'model_to_return_l':model_to_return_l,'best_config':best_config,'best_model':best_model,'best_model_l':best_model_l,'model_eval_result_all_configs':model_eval_result_all_configs,'hyperparam_grid_df':hyperparam_grid_df}
+    model_eval_result_all_configs = pd.DataFrame(model_eval_result_all_configs).join(hyperparam_grid_df)
+    hyperparam_tosweep_keys = hyperparam_grid_df.columns
+    
+    model_selection_res = {'model_to_return_l':model_to_return_l,'best_config':best_config,'best_model':best_model,'best_model_l':best_model_l,'model_eval_result_all_configs':model_eval_result_all_configs,'hyperparam_grid_df':hyperparam_grid_df,'hyperparam_tosweep_keys':hyperparam_tosweep_keys}
     
 
     return model_selection_res
