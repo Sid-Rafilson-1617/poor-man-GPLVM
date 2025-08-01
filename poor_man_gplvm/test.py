@@ -20,5 +20,5 @@ def circular_shuffle_data(spk_tsdf,n_shuffle=100,ep=None):
         spk_tsdf_shuffled = spk_tsdf.copy()
         for j in range(n_neuron):
             spk_tsdf_shuffled[:,j] = np.roll(spk_tsdf[:,j],np.random.randint(0,n_time))
-        yield spk_tsdf_shuffled
+        yield jnp.array(spk_tsdf_shuffled)
 
