@@ -25,6 +25,9 @@ def circular_shuffle_data(spk_tsdf,n_shuffle=100,ep=None):
 def compute_entropy(logp_l,vmap_axis=0):
     '''
     logp_l: n_time x n_latent or n_time x ... , by default vmap over n_time, do entropy over the rest dimensions
+    vmap_axis: axis to vmap over, default is 0
+
+    return entropy_l: n_time or scalar (if vmap_axis is None)
     '''
     
     axis_total = np.arange(logp_l.ndim)
