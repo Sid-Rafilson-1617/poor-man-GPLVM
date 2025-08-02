@@ -29,4 +29,5 @@ def compute_entropy(logp_l,vmap_axis=0):
     
     axis_total = np.arange(logp_l.ndim)
     axis_to_collapse = [x for x in axis_total if x != vmap_axis]
-    return np.sum(np.exp(logp_l) * logp_l,axis=axis_to_collapse)
+    entropy_l = -np.sum(np.exp(logp_l) * logp_l,axis=axis_to_collapse)
+    return entropy_l
