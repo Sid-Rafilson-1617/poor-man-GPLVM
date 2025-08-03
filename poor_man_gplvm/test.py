@@ -24,7 +24,7 @@ def circular_shuffle_data(spk_tsdf,n_shuffle=100,ep=None):
         yield jnp.array(spk_tsdf_shuffled)
 
 
-def shuffle_and_decode(model,spk_tsdf,n_time_per_chunk,dt_l=1,n_shuffle=100,ep=None,decoder_type='naive_bayes'):
+def shuffle_and_decode(model,spk_tsdf,n_time_per_chunk=10000,dt_l=1,n_shuffle=100,ep=None,decoder_type='naive_bayes'):
     '''
     shuffle the data and decode the latent
     '''
@@ -34,7 +34,7 @@ def shuffle_and_decode(model,spk_tsdf,n_time_per_chunk,dt_l=1,n_shuffle=100,ep=N
         if decoder_type == 'naive_bayes':
             decoding_res = model.decode_latent_naive_bayes(y_shuffled,n_time_per_chunk=n_time_per_chunk,dt_l=dt_l)
         elif decoder_type == 'temporal_smoothing':
-            decoding_res = model.decode_latent_temporal_smoothing(y_shuffled,n_time_per_chunk=n_time_per_chunk,dt_l=dt_l)
+            decoding_res = model.decode_latent_temporal_smoothing(y_shuffled,n_time_per_chunk=n_time_per_chunk)
         else:
             raise ValueError(f"decoder_type {decoder_type} not supported")
         decoding_res_l.append(decoding_res)
