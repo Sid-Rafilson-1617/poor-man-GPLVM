@@ -82,12 +82,17 @@ def get_loglikelihood_ma_all_changing_dt(y_l, tuning, hyperparam, ma_neuron,ma_l
 
 @partial(jit,static_argnames=['observation_model'])
 def get_naive_bayes_ma(y_l,tuning,hyperparam,ma_neuron,ma_latent,dt_l=1,observation_model='poisson'):
+    '''
+    log_post: n_time x n_latent
+    log_marginal_l: n_time
+    log_marginal: scalar
+    '''
     dt_l = jnp.broadcast_to(dt_l,y_l.shape[0])
     ll_per_pos_l = get_loglikelihood_ma_all_changing_dt(y_l, tuning, hyperparam, ma_neuron,ma_latent,dt_l,observation_model=observation_model)
     log_marginal_l = jscipy.special.logsumexp(ll_per_pos_l,axis=-1,keepdims=True)
     log_post = ll_per_pos_l - log_marginal_l
     log_marginal = jnp.sum(log_marginal_l)
-    return log_post, log_marginal
+    return log_post, log_marginal_l,log_marginal
 
 ### test result -- still need chunking even if likelihood is already computed
 # def get_loglikelihood_ma_chunk(y_l,tuning,ma,n_time_per_chunk=10000):
@@ -123,12 +128,12 @@ def get_naive_bayes_ma_chunk(y,tuning,hyperparam,ma_neuron,ma_latent,dt_l=1,n_ti
         ma_neuron_chunk = ma_neuron[sl]
         
         dt_l_chunk = dt_l[sl]
-        log_post,log_marginal = get_naive_bayes_ma(y_chunk,tuning,hyperparam,ma_neuron_chunk,ma_latent,dt_l_chunk,observation_model=observation_model)
+        log_post,log_marginal_l_chunk,log_marginal = get_naive_bayes_ma(y_chunk,tuning,hyperparam,ma_neuron_chunk,ma_latent,dt_l_chunk,observation_model=observation_model)
         log_post_l.append(log_post)
-        log_marginal_l.append(log_marginal)
+        log_marginal_l.append(log_marginal_l_chunk)
     log_post_l = jnp.concatenate(log_post_l,axis=0)
     log_marginal_final = jnp.sum(jnp.array(log_marginal_l))
-    return log_post_l, log_marginal_final
+    return log_post_l, log_marginal_l,log_marginal_final
 
 @jit
 def filter_one_step(carry,ll_curr,log_latent_transition_kernel_l,log_dynamics_transition_kernel,likelihood_scale=1):
