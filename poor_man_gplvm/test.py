@@ -16,7 +16,7 @@ def circular_shuffle_data(spk_tsdf,n_shuffle=100,ep=None):
     if ep is not None:
         assert isinstance(spk_tsdf,nap.TsdFrame), "input data must be a pynapple TsdFrame"
         spk_tsdf = spk_tsdf.restrict(ep)
-    n_time,n_neuron = spk_tsdf.d.shape
+    n_time,n_neuron = spk_tsdf.shape
     for i in range(n_shuffle):
         spk_tsdf_shuffled = spk_tsdf.copy()
         for j in range(n_neuron):
