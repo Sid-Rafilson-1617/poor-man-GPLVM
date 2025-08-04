@@ -88,6 +88,7 @@ def get_naive_bayes_ma(y_l,tuning,hyperparam,ma_neuron,ma_latent,dt_l=1,observat
     log_post: n_time x n_latent
     log_marginal_l: n_time
     log_marginal: scalar
+    ll_per_pos_l: n_time x n_latent
     '''
     dt_l = jnp.broadcast_to(dt_l,y_l.shape[0])
     ll_per_pos_l = get_loglikelihood_ma_all_changing_dt(y_l, tuning, hyperparam, ma_neuron,ma_latent,dt_l,observation_model=observation_model)
@@ -95,7 +96,7 @@ def get_naive_bayes_ma(y_l,tuning,hyperparam,ma_neuron,ma_latent,dt_l=1,observat
     log_post = ll_per_pos_l - log_marginal_l
     log_marginal = jnp.sum(log_marginal_l)
     log_marginal_l = log_marginal_l[:,0] # squeeze would break the case where n_time=1
-    return log_post, log_marginal_l,log_marginal
+    return log_post, log_marginal_l, log_marginal, ll_per_pos_l
 
 
 
@@ -113,6 +114,7 @@ def get_naive_bayes_ma_chunk(y,tuning,hyperparam,ma_neuron,ma_latent,dt_l=1,n_ti
     log_post_l: n_time x n_latent
     log_marginal_l: n_time
     log_marginal_final: scalar
+    ll_per_pos_l: n_time x n_latent
     '''
     n_time_tot = y.shape[0]
     n_chunks = int( jnp.ceil(n_time_tot / n_time_per_chunk))
@@ -125,20 +127,23 @@ def get_naive_bayes_ma_chunk(y,tuning,hyperparam,ma_neuron,ma_latent,dt_l=1,n_ti
     log_post_l = []
     log_marginal_l_l = []
     log_marginal_l = []
+    ll_per_pos_l_l = []
     for n in range(n_chunks):
         sl = slice((n) * n_time_per_chunk , (n+1) * n_time_per_chunk )
         y_chunk = y[sl]
         ma_neuron_chunk = ma_neuron[sl]
         
         dt_l_chunk = dt_l[sl]
-        log_post,log_marginal_l_chunk,log_marginal = get_naive_bayes_ma(y_chunk,tuning,hyperparam,ma_neuron_chunk,ma_latent,dt_l_chunk,observation_model=observation_model)
+        log_post,log_marginal_l_chunk,log_marginal,ll_per_pos_chunk = get_naive_bayes_ma(y_chunk,tuning,hyperparam,ma_neuron_chunk,ma_latent,dt_l_chunk,observation_model=observation_model)
         log_post_l.append(log_post)
         log_marginal_l_l.append(log_marginal_l_chunk)
         log_marginal_l.append(log_marginal)
+        ll_per_pos_l_l.append(ll_per_pos_chunk)
     log_post_l = jnp.concatenate(log_post_l,axis=0)
     log_marginal_l = jnp.concatenate(log_marginal_l_l,axis=0)
     log_marginal_total = jnp.sum(jnp.array(log_marginal_l))
-    return log_post_l, log_marginal_l,log_marginal_total
+    ll_per_pos_l = jnp.concatenate(ll_per_pos_l_l,axis=0)
+    return log_post_l, log_marginal_l, log_marginal_total, ll_per_pos_l
 
 @jit
 def filter_one_step(carry,ll_curr,log_latent_transition_kernel_l,log_dynamics_transition_kernel,likelihood_scale=1):
@@ -187,7 +192,7 @@ def filter_all_step_combined_ma(y, tuning,hyperparam, log_latent_transition_kern
     
     ll_all=get_loglikelihood_ma_all(y,tuning,hyperparam,ma_neuron,ma_latent,observation_model=observation_model)
     log_posterior_all,log_marginal_final,log_prior_curr_all,log_one_step_predictive_marginals =filter_all_step(ll_all,log_latent_transition_kernel_l,log_dynamics_transition_kernel,carry_init=carry_init,likelihood_scale=likelihood_scale)
-    return log_posterior_all,log_marginal_final,log_prior_curr_all,log_one_step_predictive_marginals
+    return log_posterior_all,log_marginal_final,log_prior_curr_all,log_one_step_predictive_marginals,ll_all
 
 @jit
 def smooth_one_step(carry,x,log_latent_transition_kernel_l,log_dynamics_transition_kernel):
@@ -264,6 +269,7 @@ def smooth_all_step_combined_ma_chunk(y, tuning,hyperparam,log_latent_transition
     log_causal_prior_all_allchunk = []
     log_acausal_posterior_all_allchunk = []
     log_one_step_predictive_marginals_allchunk = []
+    ll_all_allchunk = []
 
     # spatio-temporal mask
     # ma_neuron = jnp.broadcast_to(ma_neuron,y.shape)
@@ -282,15 +288,17 @@ def smooth_all_step_combined_ma_chunk(y, tuning,hyperparam,log_latent_transition
         # ma_neuron_chunk = ma_neuron[sl]
         
         
-        log_causal_posterior_all,log_marginal_final,log_causal_prior_all,log_one_step_predictive_marginals=filter_all_step_combined_ma(y_chunk, tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron_chunk,ma_latent,carry_init=filter_carry_init,likelihood_scale=likelihood_scale,observation_model=observation_model)
+        log_causal_posterior_all,log_marginal_final,log_causal_prior_all,log_one_step_predictive_marginals,ll_all=filter_all_step_combined_ma(y_chunk, tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron_chunk,ma_latent,carry_init=filter_carry_init,likelihood_scale=likelihood_scale,observation_model=observation_model)
         
         filter_carry_init = (log_causal_posterior_all[-1],log_marginal_final)
 
         log_causal_posterior_all_allchunk.append(log_causal_posterior_all)
         log_causal_prior_all_allchunk.append(log_causal_prior_all)
         log_one_step_predictive_marginals_allchunk.append(log_one_step_predictive_marginals)
+        ll_all_allchunk.append(ll_all)
     log_causal_prior_all_ = jnp.concatenate(log_causal_prior_all_allchunk,axis=0)
     log_one_step_predictive_marginals_allchunk = jnp.concatenate(log_one_step_predictive_marginals_allchunk,axis=0)
+    ll_all_concat = jnp.concatenate(ll_all_allchunk,axis=0)
 
     # smooth_carry_init=log_causal_posterior_all[-1]
     smooth_carry_init=None
@@ -315,7 +323,7 @@ def smooth_all_step_combined_ma_chunk(y, tuning,hyperparam,log_latent_transition
     log_causal_posterior_all = jnp.concatenate(log_causal_posterior_all_allchunk,axis=0)
     log_accumulated_joint_final = log_accumulated_joint_chunk
 
-    return log_acausal_posterior_all,log_marginal_final,log_causal_posterior_all,log_one_step_predictive_marginals_allchunk,log_accumulated_joint_final
+    return log_acausal_posterior_all,log_marginal_final,log_causal_posterior_all,log_one_step_predictive_marginals_allchunk,log_accumulated_joint_final,ll_all_concat
 
 @jit
 def compute_transition_posterior_prob(log_accumulated_joint_total):
