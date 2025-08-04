@@ -127,16 +127,26 @@ class AbstractGPLVMJump1D(ABC):
         p_move_to_jump = hyperparam.get('p_move_to_jump',self.p_move_to_jump)
         p_jump_to_move = hyperparam.get('p_jump_to_move',self.p_jump_to_move)
         latent_transition_kernel_l,log_latent_transition_kernel_l,dynamics_transition_kernel,log_dynamics_transition_kernel = gpk.create_transition_prob_1d(self.possible_latent_bin,self.possible_dynamics,movement_variance,p_move_to_jump,p_jump_to_move)
-        log_posterior_all,log_marginal_final,log_causal_posterior_all,log_one_step_predictive_marginals_all= self._decode_latent(y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent=ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk)
+        log_posterior_all,log_marginal_final,log_causal_posterior_all,log_one_step_predictive_marginals_all,log_accumulated_joint_total= self._decode_latent(y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent=ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk)
+        
         posterior_all = np.exp(log_posterior_all)
         posterior_latent_marg = posterior_all.sum(axis=1)
         posterior_dynamics_marg = posterior_all.sum(axis=2)
+        
+     
+        
         decoding_res = {'log_posterior_all':np.array(log_posterior_all),
                         'log_marginal_final':log_marginal_final.item(),
                         'posterior_all':posterior_all,
                         'posterior_latent_marg':posterior_latent_marg,
                         'posterior_dynamics_marg':posterior_dynamics_marg,
                         'log_one_step_predictive_marginals_all':log_one_step_predictive_marginals_all}
+                # Compute transition probabilities from accumulated joint
+        # log_accumulated_joint_total: (n_dynamics_curr, n_dynamics_next, n_latent_curr, n_latent_next)
+        if log_accumulated_joint_total is not None:
+            transition_posterior_prob_res = decoder.compute_transition_posterior_prob(log_accumulated_joint_total,y)
+            decoding_res.update(transition_posterior_prob_res)
+
         return decoding_res
 
     def decode_latent_naive_bayes(self,y,tuning=None,hyperparam={},ma_neuron=None,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000,dt_l=1.,observation_model=None):
@@ -292,7 +302,7 @@ class AbstractGPLVMJump1D(ABC):
             
             tuning = self.get_tuning(params,hyperparam,tuning_basis)
             # E-step
-            log_posterior_all,log_marginal_final,log_causal_posterior_all,log_one_step_predictive_marginals_allchunk = self._decode_latent(y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk)
+            log_posterior_all,log_marginal_final,log_causal_posterior_all,log_one_step_predictive_marginals_allchunk,log_accumulated_joint_total = self._decode_latent(y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk)
 
             log_posterior_curr = logsumexp(log_posterior_all,axis=1) # sum over the dynamics dimension; get log posterior over latent
             log_marginal_l.append(log_marginal_final)
@@ -390,10 +400,8 @@ class PoissonGPLVMJump1D(AbstractGPLVMJump1D):
         log_latent_transition_kernel_l: n_dynamics x n_latent x n_latent
         log_dynamics_transition_kernel: n_dynamics x n_dynamics
         '''
-        # log_acausal_posterior_all,log_marginal_final,log_acausal_curr_next_joint_all,log_causal_posterior_all = decoder.smooth_all_step_combined_ma_chunk(y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk,observation_model='poisson')
-        log_acausal_posterior_all,log_marginal_final,log_causal_posterior_all,log_one_step_predictive_marginals_allchunk = decoder.smooth_all_step_combined_ma_chunk(y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk,observation_model='poisson')
-        # return log_acausal_posterior_all,log_marginal_final,log_acausal_curr_next_joint_all,log_causal_posterior_all
-        return log_acausal_posterior_all,log_marginal_final,log_causal_posterior_all,log_one_step_predictive_marginals_allchunk
+        log_acausal_posterior_all,log_marginal_final,log_causal_posterior_all,log_one_step_predictive_marginals_allchunk,log_accumulated_joint_total = decoder.smooth_all_step_combined_ma_chunk(y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk,observation_model='poisson')
+        return log_acausal_posterior_all,log_marginal_final,log_causal_posterior_all,log_one_step_predictive_marginals_allchunk,log_accumulated_joint_total
 
     def decode_latent_naive_bayes(self,y,tuning=None,hyperparam={},ma_neuron=None,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000,dt_l=1.):
         '''
@@ -480,10 +488,8 @@ class GaussianGPLVMJump1D(AbstractGPLVMJump1D):
         log_latent_transition_kernel_l: n_dynamics x n_latent x n_latent
         log_dynamics_transition_kernel: n_dynamics x n_dynamics
         '''
-        # log_acausal_posterior_all,log_marginal_final,log_acausal_curr_next_joint_all,log_causal_posterior_all = decoder.smooth_all_step_combined_ma_chunk(y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk,observation_model='gaussian')
-        log_acausal_posterior_all,log_marginal_final,log_causal_posterior_all,log_one_step_predictive_marginals_allchunk = decoder.smooth_all_step_combined_ma_chunk(y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk,observation_model='gaussian')
-        # return log_acausal_posterior_all,log_marginal_final,log_acausal_curr_next_joint_all,log_causal_posterior_all
-        return log_acausal_posterior_all,log_marginal_final,log_causal_posterior_all,log_one_step_predictive_marginals_allchunk
+        log_acausal_posterior_all,log_marginal_final,log_causal_posterior_all,log_one_step_predictive_marginals_allchunk,log_accumulated_joint_total = decoder.smooth_all_step_combined_ma_chunk(y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk,observation_model='gaussian')
+        return log_acausal_posterior_all,log_marginal_final,log_causal_posterior_all,log_one_step_predictive_marginals_allchunk,log_accumulated_joint_total
 
     def decode_latent(self,y,tuning=None,hyperparam={},ma_neuron=None,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000):
         hyperparam['noise_std'] = hyperparam.get('noise_std',self.noise_std)

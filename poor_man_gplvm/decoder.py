@@ -23,6 +23,8 @@ log_dynamics_transition_kernel: n_dynamics x n_dynamics
 ma_neuron: mask to make out neuron / (time); necessary for computing co-smoothing
 ma_latent: mask out latent; necessary for downsampled_lml
 
+log_accumulated_joint: n_dynamics x n_dynamics x n_latent x n_latent, log sum_k p(x_k,x_k+1,I_k,I_k+1|O_1:T); need to be processed to get transition
+
 '''
 
 @jit
@@ -205,10 +207,10 @@ def filter_all_step_combined_ma(y, tuning,hyperparam, log_latent_transition_kern
 def smooth_one_step(carry,x,log_latent_transition_kernel_l,log_dynamics_transition_kernel):
     '''
     causal_prior here refers to the prior from filter, i.e. logp(x_k+1|o_1:k)
+    carry now contains (log_acausal_posterior_next, log_accumulated_joint)
     '''
-    log_acausal_posterior_next=carry # need "previous" smoother, i.e. next time step (we use next/prev to denote in time here, not in inference steps); 
+    log_acausal_posterior_next, log_accumulated_joint = carry # need "previous" smoother, i.e. next time step (we use next/prev to denote in time here, not in inference steps); 
     log_causal_posterior_curr,log_causal_prior_next=x
-    # log_causal_prior_next = log_tuning_state_transition_kernel_l + log_non_tuning_transition_kernel + 
 
     # broadcast things into: (nontuning_curr, nontuning_next, tuning_curr, tuning_next)
     x_next_given_x_curr_I_next = log_latent_transition_kernel_l[None,:,:,:] # add the nontuning_curr dimension
@@ -217,13 +219,17 @@ def smooth_one_step(carry,x,log_latent_transition_kernel_l,log_dynamics_transiti
     post_prior_diff = post_prior_diff[None,:,None,:] # add the two curr dimensions
     
     inside_integral = x_next_given_x_curr_I_next + I_next_given_I_curr + post_prior_diff + log_causal_posterior_curr[:,None,:,None] # supply the two next dimensions in broadcast
-    log_curr_next_joint = inside_integral # log p(x_k,x_k+1,I_k,I_k+1|O_1:k)
+    log_curr_next_joint = inside_integral # log p(x_k,x_k+1,I_k,I_k+1|O_1:T)
     log_acausal_posterior_curr = jscipy.special.logsumexp(inside_integral, axis = (1,3)) # logsumexp over the two "next" dimensions
-    # to_return = (log_acausal_posterior_curr,log_curr_next_joint) # the joint is too large, come up with reduced version
+    
+    # Accumulate the joint using logaddexp for numerical stability
+    
+    log_accumulated_joint_new = jnp.logaddexp(log_accumulated_joint, log_curr_next_joint)
+    
+    carry_new = (log_acausal_posterior_curr, log_accumulated_joint_new)
     to_return = log_acausal_posterior_curr
-    carry = log_acausal_posterior_curr
 
-    return carry,to_return
+    return carry_new, to_return
 
     # # old way
     # inside_integral = x_next_given_x_curr_I_next + I_next_given_I_curr + post_prior_diff
@@ -240,7 +246,9 @@ def smooth_all_step(log_causal_posterior_all, log_causal_prior_all,log_latent_tr
     '''
     if carry_init is None:
         do_concat=True
-        carry_init = log_causal_posterior_all[-1]
+        n_latent = log_latent_transition_kernel_l[0].shape[0]
+        n_dynamics = log_dynamics_transition_kernel.shape[0]
+        carry_init = (log_causal_posterior_all[-1], jnp.ones((n_dynamics,n_dynamics,n_latent,n_latent)) * 1e-40)  # Initialize with None for log accumulated joint
         xs = (log_causal_posterior_all[:-1],log_causal_prior_all)  # causal prior and the acausal init have the same t+1 index, 1 more than the causal posterior; handled when fed in
     else:
         do_concat=False
@@ -248,13 +256,15 @@ def smooth_all_step(log_causal_posterior_all, log_causal_prior_all,log_latent_tr
 
     
     f = partial(smooth_one_step,log_latent_transition_kernel_l=log_latent_transition_kernel_l,log_dynamics_transition_kernel=log_dynamics_transition_kernel)
-    # carry_final, (log_acausal_posterior_all,log_acausal_curr_next_joint_all) = scan(f, carry_init, xs=xs,reverse=True)
     carry_final, log_acausal_posterior_all = scan(f, carry_init, xs=xs,reverse=True)
+    
+    # Extract the log accumulated joint from the final carry
+    _, log_accumulated_joint_final = carry_final
+    
     if do_concat:
         log_acausal_posterior_all = jnp.concatenate([log_acausal_posterior_all,log_causal_posterior_all[-1][None,...]],axis=0)
     
-    # return log_acausal_posterior_all,log_acausal_curr_next_joint_all
-    return log_acausal_posterior_all
+    return log_acausal_posterior_all, log_accumulated_joint_final
 
 def smooth_all_step_combined_ma_chunk(y, tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent=None,likelihood_scale=1,
                                 n_time_per_chunk=10000,observation_model='poisson'
@@ -272,7 +282,6 @@ def smooth_all_step_combined_ma_chunk(y, tuning,hyperparam,log_latent_transition
     log_causal_posterior_all_allchunk=[]
     log_causal_prior_all_allchunk = []
     log_acausal_posterior_all_allchunk = []
-    log_acausal_curr_next_joint_all_allchunk = []
     log_one_step_predictive_marginals_allchunk = []
 
     # spatio-temporal mask
@@ -304,6 +313,8 @@ def smooth_all_step_combined_ma_chunk(y, tuning,hyperparam,log_latent_transition
 
     # smooth_carry_init=log_causal_posterior_all[-1]
     smooth_carry_init=None
+    
+    
     for n in range(n_chunks-1,-1,-1):
         sl = slice_l[n]
         log_causal_prior_all=log_causal_prior_all_[sl.start+1:sl.stop+1] # causal prior and the acausal init have the same t+1 index, 1 more than the causal posterior
@@ -311,18 +322,47 @@ def smooth_all_step_combined_ma_chunk(y, tuning,hyperparam,log_latent_transition
         log_causal_posterior_all = log_causal_posterior_all_allchunk[n]
         # log_causal_prior_all = log_causal_prior_all_allchunk[n]
         
-        # log_acausal_posterior_all,log_acausal_curr_next_joint_all = smooth_all_step(log_causal_posterior_all, log_causal_prior_all,log_latent_transition_kernel_l,log_dynamics_transition_kernel,carry_init=smooth_carry_init)
-        log_acausal_posterior_all = smooth_all_step(log_causal_posterior_all, log_causal_prior_all,log_latent_transition_kernel_l,log_dynamics_transition_kernel,carry_init=smooth_carry_init)
-        smooth_carry_init = log_acausal_posterior_all[0]
+        # For chunks after the first (going backwards), we need to pass the accumulated joint in the carry
+        log_acausal_posterior_all, log_accumulated_joint_chunk = smooth_all_step(log_causal_posterior_all, log_causal_prior_all,log_latent_transition_kernel_l,log_dynamics_transition_kernel,carry_init=smooth_carry_init)
+        smooth_carry_init = (log_acausal_posterior_all[0], log_accumulated_joint_chunk)  
 
         log_acausal_posterior_all_allchunk.append(log_acausal_posterior_all)
-        # log_acausal_curr_next_joint_all_allchunk.append(log_acausal_curr_next_joint_all)
+        
     log_acausal_posterior_all_allchunk.reverse() # reverse the order of the chunks
-    # log_acausal_curr_next_joint_all_allchunk.reverse() # reverse the order of the chunks
 
     log_acausal_posterior_all = jnp.concatenate(log_acausal_posterior_all_allchunk,axis=0) 
-    # log_acausal_curr_next_joint_all = jnp.concatenate(log_acausal_curr_next_joint_all_allchunk,axis=0)
     log_causal_posterior_all = jnp.concatenate(log_causal_posterior_all_allchunk,axis=0)
+    log_accumulated_joint_final = log_accumulated_joint_chunk
 
-    return log_acausal_posterior_all,log_marginal_final,log_causal_posterior_all,log_one_step_predictive_marginals_allchunk
+    return log_acausal_posterior_all,log_marginal_final,log_causal_posterior_all,log_one_step_predictive_marginals_allchunk,log_accumulated_joint_final
 
+@jit
+def compute_transition_posterior_prob(log_accumulated_joint_total,y):
+    log_mean_accumulated_joint =log_accumulated_joint_total - jnp.log(y.shape[0]) # convert log sum exp to log mean exp
+            # Convert from log space to regular space for transition computations
+    mean_accumulated_joint = jnp.exp(log_mean_accumulated_joint)
+    
+    # Compute marginal counts for normalization: sum over next states
+    marginal_curr_counts = mean_accumulated_joint.sum(axis=(1, 3))  # (n_dynamics_curr, n_latent_curr)
+    
+    # Compute conditional transition probabilities: p(next|curr)
+    # Reshape for broadcasting: marginal_curr_counts -> (n_dynamics_curr, 1, n_latent_curr, 1)
+    marginal_curr_expanded = marginal_curr_counts[:, None, :, None]
+    conditional_transition_counts = mean_accumulated_joint / (marginal_curr_expanded + 1e-40)
+    log_conditional_transition_counts = jnp.log(conditional_transition_counts + 1e-40)
+    
+    # Compute latent-only transition counts by marginalizing over dynamics
+    joint_latent_counts = mean_accumulated_joint.sum(axis=(0, 1))  # (n_latent_curr, n_latent_next)
+    marginal_latent_counts = marginal_curr_counts.sum(axis=0)  # (n_latent_curr,)
+    conditional_latent_transition_counts = joint_latent_counts / (marginal_latent_counts[:, None] + 1e-40)
+    log_conditional_latent_transition_counts = jnp.log(conditional_latent_transition_counts + 1e-40)
+
+    transition_posterior_prob_res = {'mean_accumulated_joint':mean_accumulated_joint,
+                                     'marginal_curr_counts':marginal_curr_counts,
+                                     'conditional_transition_counts':conditional_transition_counts,
+                                     'log_conditional_transition_counts':log_conditional_transition_counts,
+                                     'joint_latent_counts':joint_latent_counts,
+                                     'marginal_latent_counts':marginal_latent_counts,
+                                     'conditional_latent_transition_counts':conditional_latent_transition_counts,
+                                     'log_conditional_latent_transition_counts':log_conditional_latent_transition_counts}
+    return transition_posterior_prob_res
