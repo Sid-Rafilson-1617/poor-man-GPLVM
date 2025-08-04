@@ -337,45 +337,42 @@ def smooth_all_step_combined_ma_chunk(y, tuning,hyperparam,log_latent_transition
     return log_acausal_posterior_all,log_marginal_final,log_causal_posterior_all,log_one_step_predictive_marginals_allchunk,log_accumulated_joint_final
 
 @jit
-def compute_transition_posterior_prob(log_accumulated_joint_total,y):
-    log_mean_accumulated_joint =log_accumulated_joint_total - jnp.log(y.shape[0]) # convert log sum exp to log mean exp
-            # Convert from log space to regular space for transition computations
-    mean_accumulated_joint = jnp.exp(log_mean_accumulated_joint)
-    
-    # Compute marginal counts for normalization: sum over next states
-    # marginal_curr_counts = mean_accumulated_joint.sum(axis=(1, 3))  # (n_dynamics_curr, n_latent_curr)
-    log_marginal_curr_counts = jscipy.special.logsumexp(log_accumulated_joint_total,axis=(1,3))
-    
-    
-    # Compute conditional transition probabilities: p(next|curr)
-    # Reshape for broadcasting: marginal_curr_counts -> (n_dynamics_curr, 1, n_latent_curr, 1)
-    
-    log_marginal_curr_counts_expanded = log_marginal_curr_counts[:,None,:,None]
-    log_conditional_transition_counts = log_mean_accumulated_joint - log_marginal_curr_counts_expanded
-    conditional_transition_counts = jnp.exp(log_conditional_transition_counts)
-    
-    
-    # Compute latent-only transition counts by marginalizing over dynamics
-    log_joint_latent_counts = jscipy.special.logsumexp(log_accumulated_joint_total,axis=(0,1))  
-    joint_latent_counts = jnp.exp(log_joint_latent_counts)
-    log_marginal_latent_counts = jscipy.special.logsumexp(log_marginal_curr_counts,axis=0)
-    log_conditional_latent_transition_counts = log_joint_latent_counts - log_marginal_latent_counts[:,None]
-    conditional_latent_transition_counts = jnp.exp(log_conditional_latent_transition_counts)
+def compute_transition_posterior_prob(log_accumulated_joint_total):
+    '''
+    log_accumulated_joint_total: n_dynamics x n_dynamics x n_latent x n_latent, log sum_k p(x_k,x_k+1,I_k,I_k+1|O_1:T)
+    y: n_time x n_neuron
 
-    # compute dynamics only transition counts by marginalizing over latent
-    log_joint_dynamics_counts = jscipy.special.logsumexp(log_accumulated_joint_total,axis=(2,3))
-    joint_dynamics_counts = jnp.exp(log_joint_dynamics_counts)
-    log_marginal_dynamics_counts = jscipy.special.logsumexp(log_marginal_curr_counts,axis=1)
-    log_conditional_dynamics_transition_counts = log_joint_dynamics_counts - log_marginal_dynamics_counts[:,None]
-    conditional_dynamics_transition_counts = jnp.exp(log_conditional_dynamics_transition_counts)
+    in return , "joint" means joint posterior, e.g. p(x_k, x_k+1|O_1:T), "transition" means conditional posterior, e.g. p(x_k+1|x_k,O_1:T)
+    '''
+    log_joint = log_accumulated_joint_total - jscipy.special.logsumexp(log_accumulated_joint_total) # normalized full joint
+    log_joint_latent = jscipy.special.logsumexp(log_joint,axis=(0,1)) # marginal over dynamics; n_latent x n_latent
+    log_joint_dynamics = jscipy.special.logsumexp(log_joint,axis=(2,3)) # marginal over latent; n_dynamics x n_dynamics
+    # when computing transition conditional, need to marginalize over next and subtract!
+    log_transition_latent = log_joint_latent - jscipy.special.logsumexp(log_joint_latent,axis=(1),keepdims=True) # normalized conditional latent; n_latent x n_latent
+    log_transition_dynamics = log_joint_dynamics - jscipy.special.logsumexp(log_joint_dynamics,axis=(1),keepdims=True) # normalized conditional dynamics
 
-    transition_posterior_prob_res = {'p_transition_joint_full':mean_accumulated_joint,
-                                     'p_transition_conditional_full':conditional_transition_counts,
-                                     'log_p_transition_conditional':log_conditional_transition_counts,
-                                     'p_transition_joint_latent':joint_latent_counts,
-                                     'p_transition_conditional_latent':conditional_latent_transition_counts,
-                                     'log_p_transition_conditional_latent':log_conditional_latent_transition_counts,
-                                     'p_transition_joint_dynamics':joint_dynamics_counts,
-                                     'p_transition_conditional_dynamics':conditional_dynamics_transition_counts,
-                                     'log_p_transition_conditional_dynamics':log_conditional_dynamics_transition_counts}
+    log_transition_joint = log_joint - jscipy.special.logsumexp(log_joint_latent,axis=(1,3),keepdims=True) # normalized joint latent
+
+    # all the exp
+    p_joint = jnp.exp(log_joint)
+    p_joint_latent = jnp.exp(log_joint_latent)
+    p_joint_dynamics = jnp.exp(log_joint_dynamics)
+    p_transition_latent = jnp.exp(log_transition_latent)
+    p_transition_dynamics = jnp.exp(log_transition_dynamics)
+    p_transition_joint = jnp.exp(log_transition_joint)
+
+    transition_posterior_prob_res = {'p_joint':p_joint,
+                                     'p_joint_latent':p_joint_latent,
+                                     'p_joint_dynamics':p_joint_dynamics,
+                                     'p_transition_latent':p_transition_latent,
+                                     'p_transition_dynamics':p_transition_dynamics,
+                                     'p_transition_joint':p_transition_joint,
+                                     'log_joint':log_joint,
+                                     'log_joint_latent':log_joint_latent,
+                                     'log_joint_dynamics':log_joint_dynamics,
+                                     'log_transition_latent':log_transition_latent,
+                                     'log_transition_dynamics':log_transition_dynamics,
+                                     'log_transition_joint':log_transition_joint,
+                                     }
+
     return transition_posterior_prob_res
