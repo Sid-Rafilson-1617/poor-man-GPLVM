@@ -14,7 +14,7 @@ from poor_man_gplvm import fit_tuning_helper as fth
 from poor_man_gplvm import gp_kernel as gpk
 from poor_man_gplvm.experimental import fit_tuning_helper_exp as fth_exp
 from poor_man_gplvm.experimental import decoder_exp as dec_exp
-
+from jax.scipy.special import logsumexp
 
 
 # gain model
@@ -230,8 +230,8 @@ class PoissonGPLVMGain1D_gain(PoissonGPLVMJump1D):
                 y, tuning, hyperparam, 
                 self.log_latent_transition_kernel_l, self.log_dynamics_transition_kernel,
                 ma_neuron, ma_latent, likelihood_scale, n_time_per_chunk, gain_curr)
-            log_posterior_curr, log_marginal_final, _ = decode_res
-            
+            log_posterior_all, log_marginal_final, log_causal_posterior_all = decode_res
+            log_posterior_curr = logsumexp(log_posterior_all,axis=1) # sum over the dynamics dimension; get log posterior over latent
             
             
             # Store history
