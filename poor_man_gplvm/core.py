@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import jax
 import jax.random as jr
 from jax.scipy.special import logsumexp
-from poor_man_gplvm import fit_tuning_with_basis as ftwb
+
 from abc import ABC, abstractmethod
 from poor_man_gplvm import fit_tuning_helper as fth
 from poor_man_gplvm import decoder
@@ -23,7 +23,7 @@ fix lenscale, so eigenvalue and eigenvectors are fixed; but allow a latent mask 
 '''
 
 # TODO:
-# add outscale!!!
+
 
 def generate_basis(lengthscale,n_latent_bin,explained_variance_threshold_basis = 0.999,include_bias=True ):
     possible_latent_bin = jnp.linspace(0,1,n_latent_bin)
