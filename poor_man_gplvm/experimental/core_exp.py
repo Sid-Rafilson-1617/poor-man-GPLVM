@@ -92,9 +92,10 @@ class PoissonGPLVMGain1D_gain(PoissonGPLVMJump1D):
             y, tuning, hyperparam, log_latent_transition_kernel_l, log_dynamics_transition_kernel,
             ma_neuron, ma_latent, likelihood_scale, n_time_per_chunk, 'poisson', gain)
             
-    def decode_latent_naive_bayes(self, y, tuning=None, hyperparam={}, ma_neuron=None, ma_latent=None, likelihood_scale=1., n_time_per_chunk=10000, dt_l=1., gain=None):
+    def decode_latent_naive_bayes(self, y, tuning=None, hyperparam={}, ma_neuron=None, ma_latent=None, likelihood_scale=1., n_time_per_chunk=10000, dt_l=1., gain=None,gain_refit_n_iter=1):
         '''
         Naive Bayes decoding with gain
+        gain_refit_n_iter: number of iterations to refit the gain; if 0 use the given gain; if 0, first get posterior given gain, then refit the gain given the posterior
         '''
         if tuning is None:
             tuning = self.tuning
@@ -108,9 +109,12 @@ class PoissonGPLVMGain1D_gain(PoissonGPLVMJump1D):
             else:
                 gain = jnp.ones(len(y))
             
-        
+        for i in range(gain_refit_n_iter):
+            log_post_l, log_marginal_l, log_marginal_total = dec_exp.get_naive_bayes_ma_chunk_gain(
+                y, tuning, hyperparam, ma_neuron, ma_latent, dt_l, n_time_per_chunk, 'poisson', gain)
+            gain = self.get_gain_chunk(y, log_post_l,n_time_per_chunk=n_time_per_chunk)
         log_post_l, log_marginal_l, log_marginal_total = dec_exp.get_naive_bayes_ma_chunk_gain(
-            y, tuning, hyperparam, ma_neuron, ma_latent, dt_l, n_time_per_chunk, 'poisson', gain)
+                y, tuning, hyperparam, ma_neuron, ma_latent, dt_l, n_time_per_chunk, 'poisson', gain)
         
         decoding_res = {
             'log_posterior': log_post_l,
