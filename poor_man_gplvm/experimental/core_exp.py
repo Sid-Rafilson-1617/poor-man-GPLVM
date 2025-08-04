@@ -16,6 +16,7 @@ from poor_man_gplvm.experimental import fit_tuning_helper_exp as fth_exp
 from poor_man_gplvm.experimental import decoder_exp as dec_exp
 from jax.scipy.special import logsumexp
 import tqdm
+import numpy as np
 
 # gain model
 # at each time learn a gain variable that controls the population
@@ -208,22 +209,31 @@ class PoissonGPLVMGain1D_gain(PoissonGPLVMJump1D):
         param_curr = self.params
         gain_curr = self.gain
         
-        em_history = {
-            'log_likelihood': [],
-            'params': [],
-            'gain': [],
-            'log_posterior': []
-        }
+        if save_every is None:
+            save_every = n_iter
+
+        log_posterior_all_saved = []
+        params_saved = []
+        tuning_saved = []
+        gain_saved = []
+        iter_saved = []
+        log_marginal_saved = []
         
+        log_marginal_l = []
         for i in tqdm.trange(n_iter):
             
             # M-step: update both tuning and gain
             m_step_res = self.m_step(param_curr, y, log_posterior_curr, self.tuning_basis, 
-                                   hyperparam, opt_state_curr, gain_curr)
+                                   hyperparam, opt_state_curr, gain_curr) # attributes like params and gain are updated
             param_curr = m_step_res['params']
             gain_curr = m_step_res['gain']
             opt_state_curr = m_step_res['opt_state']
             tuning = m_step_res['tuning']
+            if i==0:
+                m_step_res_l = {k:[] for k in m_step_res.keys()}
+            for k in m_step_res.keys():
+                if k not in ['params','opt_state','gain']:  # Don't save params in history
+                    m_step_res_l[k].append(m_step_res[k])
             
             # Use gain-aware decoder
             decode_res = self._decode_latent(
@@ -233,28 +243,45 @@ class PoissonGPLVMGain1D_gain(PoissonGPLVMJump1D):
             log_posterior_all, log_marginal_final, log_causal_posterior_all = decode_res
             log_posterior_curr = logsumexp(log_posterior_all,axis=1) # sum over the dynamics dimension; get log posterior over latent
             
-            
+            log_marginal_l.append(log_marginal_final)
             # Store history
-            em_history['log_likelihood'].append(log_marginal_final)
+
             if save_every is not None and i % save_every == 0:
-                em_history['params'].append(param_curr)
-                em_history['tuning'].append(tuning)
-                em_history['gain'].append(gain_curr)
-                em_history['log_posterior'].append(log_posterior_curr)
-                
-        # Final update
+                params_saved.append(param_curr)
+                tuning_saved.append(tuning)
+                gain_saved.append(gain_curr)
+                iter_saved.append(i)
+                log_marginal_saved.append(log_marginal_final)
+
+        # update attributes
         self.params = param_curr
         self.tuning = tuning
         self.gain = gain_curr
         
-        em_res = {
-            'params': param_curr,
-            'gain': gain_curr,
-            'tuning': tuning,
-            'log_posterior': log_posterior_curr,
-            'log_likelihood': jnp.array(em_history['log_likelihood']),
-            'history': em_history
-        }
+        self.log_marginal_final = log_marginal_final
+        
+        posterior = np.exp(log_posterior_all) # n_time x n_dynamics x n_latent
+        self.posterior_latent_marg = posterior.sum(axis=1)
+        self.posterior_dynamics_marg = posterior.sum(axis=2)
+        
+        em_res = {'log_posterior_all_saved':log_posterior_all_saved,
+                  'log_posterior_init':log_posterior_init,
+                  'params_saved':params_saved,
+                  'tuning_saved':tuning_saved,
+                  'gain_saved':gain_saved,
+                  'iter_saved':iter_saved,
+                  'params':self.params,
+                  'tuning':self.tuning,
+                  'log_posterior_final':log_posterior_all,
+                  'log_marginal':log_marginal_final,
+                  'log_marginal_l':log_marginal_l,
+                  'log_marginal_saved':log_marginal_saved,
+                  'posterior':posterior,
+                  'posterior_latent_marg':self.posterior_latent_marg,
+                  'posterior_dynamics_marg':self.posterior_dynamics_marg,
+                  'm_step_res_l':m_step_res_l,
+                #   'log_posterior_curr_next_joint_all':log_posterior_curr_next_joint_all, # from this, transition can be derived
+                  }
         
         return em_res
         
