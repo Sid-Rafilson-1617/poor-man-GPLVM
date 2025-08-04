@@ -84,7 +84,7 @@ class PoissonGPLVMGain1D_gain(PoissonGPLVMJump1D):
                 gain = self.gain
             else:
                 gain = jnp.ones(len(y))
-        import experimental.decoder_exp as dec_exp
+        
         return dec_exp.smooth_all_step_combined_ma_chunk_gain(
             y, tuning, hyperparam, log_latent_transition_kernel_l, log_dynamics_transition_kernel,
             ma_neuron, ma_latent, likelihood_scale, n_time_per_chunk, 'poisson', gain)
@@ -177,7 +177,6 @@ class PoissonGPLVMGain1D_gain(PoissonGPLVMJump1D):
         self.gain = gain_init
             
         # Create the adam runner for tuning parameters
-        import experimental.fit_tuning_helper_exp as fth_exp
         self.adam_runner, opt_state_init_fun = fth_exp.make_adam_runner(
             fth_exp.poisson_m_step_objective_gain,
             step_size=m_step_step_size,
