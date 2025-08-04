@@ -357,12 +357,19 @@ def compute_transition_posterior_prob(log_accumulated_joint_total,y):
     conditional_latent_transition_counts = joint_latent_counts / (marginal_latent_counts[:, None] + 1e-40)
     log_conditional_latent_transition_counts = jnp.log(conditional_latent_transition_counts + 1e-40)
 
-    transition_posterior_prob_res = {'mean_accumulated_joint':mean_accumulated_joint,
-                                     'marginal_curr_counts':marginal_curr_counts,
-                                     'conditional_transition_counts':conditional_transition_counts,
-                                     'log_conditional_transition_counts':log_conditional_transition_counts,
-                                     'joint_latent_counts':joint_latent_counts,
-                                     'marginal_latent_counts':marginal_latent_counts,
-                                     'conditional_latent_transition_counts':conditional_latent_transition_counts,
-                                     'log_conditional_latent_transition_counts':log_conditional_latent_transition_counts}
+    # compute dynamics only transition counts by marginalizing over latent
+    joint_dynamics_counts = mean_accumulated_joint.sum(axis=(2, 3))  # (n_dynamics_curr, n_dynamics_next)
+    marginal_dynamics_counts = marginal_curr_counts.sum(axis=1)  # (n_dynamics_curr,)
+    conditional_dynamics_transition_counts = joint_dynamics_counts / (marginal_dynamics_counts[:, None] + 1e-40)
+    log_conditional_dynamics_transition_counts = jnp.log(conditional_dynamics_transition_counts + 1e-40)
+
+    transition_posterior_prob_res = {'p_transition_joint_full':mean_accumulated_joint,
+                                     'p_transition_conditional_full':conditional_transition_counts,
+                                     'log_p_transition_conditional':log_conditional_transition_counts,
+                                     'p_transition_joint_latent':joint_latent_counts,
+                                     'p_transition_conditional_latent':conditional_latent_transition_counts,
+                                     'log_p_transition_conditional_latent':log_conditional_latent_transition_counts,
+                                     'p_transition_joint_dynamics':joint_dynamics_counts,
+                                     'p_transition_conditional_dynamics':conditional_dynamics_transition_counts,
+                                     'log_p_transition_conditional_dynamics':log_conditional_dynamics_transition_counts}
     return transition_posterior_prob_res
