@@ -96,6 +96,7 @@ class PoissonGPLVMGain1D_gain(PoissonGPLVMJump1D):
         '''
         Naive Bayes decoding with gain
         gain_refit_n_iter: number of iterations to refit the gain; if 0 use the given gain; if 0, first get posterior given gain, then refit the gain given the posterior
+        notice the decode latent doesnt have the gain refit yet, maybe a todo!!!
         '''
         if tuning is None:
             tuning = self.tuning
