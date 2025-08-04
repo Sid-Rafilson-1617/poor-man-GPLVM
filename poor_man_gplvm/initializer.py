@@ -1,3 +1,4 @@
+import sklearn
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import MinMaxScaler
 def init_with_pca(y,n_latent_bin,n_pca_components=None,noise_scale=0,key=jr.PRNGKey(0),**kwargs):
