@@ -343,25 +343,31 @@ def compute_transition_posterior_prob(log_accumulated_joint_total,y):
     mean_accumulated_joint = jnp.exp(log_mean_accumulated_joint)
     
     # Compute marginal counts for normalization: sum over next states
-    marginal_curr_counts = mean_accumulated_joint.sum(axis=(1, 3))  # (n_dynamics_curr, n_latent_curr)
+    # marginal_curr_counts = mean_accumulated_joint.sum(axis=(1, 3))  # (n_dynamics_curr, n_latent_curr)
+    log_marginal_curr_counts = jscipy.special.logsumexp(log_accumulated_joint_total,axis=(1,3))
+    
     
     # Compute conditional transition probabilities: p(next|curr)
     # Reshape for broadcasting: marginal_curr_counts -> (n_dynamics_curr, 1, n_latent_curr, 1)
-    marginal_curr_expanded = marginal_curr_counts[:, None, :, None]
-    conditional_transition_counts = mean_accumulated_joint / (marginal_curr_expanded + 1e-40)
-    log_conditional_transition_counts = jnp.log(conditional_transition_counts + 1e-40)
+    
+    log_marginal_curr_counts_expanded = log_marginal_curr_counts[:,None,:,None]
+    log_conditional_transition_counts = log_mean_accumulated_joint - log_marginal_curr_counts_expanded
+    conditional_transition_counts = jnp.exp(log_conditional_transition_counts)
+    
     
     # Compute latent-only transition counts by marginalizing over dynamics
-    joint_latent_counts = mean_accumulated_joint.sum(axis=(0, 1))  # (n_latent_curr, n_latent_next)
-    marginal_latent_counts = marginal_curr_counts.sum(axis=0)  # (n_latent_curr,)
-    conditional_latent_transition_counts = joint_latent_counts / (marginal_latent_counts[:, None] + 1e-40)
-    log_conditional_latent_transition_counts = jnp.log(conditional_latent_transition_counts + 1e-40)
+    log_joint_latent_counts = jscipy.special.logsumexp(log_accumulated_joint_total,axis=(0,1))  
+    joint_latent_counts = jnp.exp(log_joint_latent_counts)
+    log_marginal_latent_counts = jscipy.special.logsumexp(log_marginal_curr_counts,axis=0)
+    log_conditional_latent_transition_counts = log_joint_latent_counts - log_marginal_latent_counts[:,None]
+    conditional_latent_transition_counts = jnp.exp(log_conditional_latent_transition_counts)
 
     # compute dynamics only transition counts by marginalizing over latent
-    joint_dynamics_counts = mean_accumulated_joint.sum(axis=(2, 3))  # (n_dynamics_curr, n_dynamics_next)
-    marginal_dynamics_counts = marginal_curr_counts.sum(axis=1)  # (n_dynamics_curr,)
-    conditional_dynamics_transition_counts = joint_dynamics_counts / (marginal_dynamics_counts[:, None] + 1e-40)
-    log_conditional_dynamics_transition_counts = jnp.log(conditional_dynamics_transition_counts + 1e-40)
+    log_joint_dynamics_counts = jscipy.special.logsumexp(log_accumulated_joint_total,axis=(2,3))
+    joint_dynamics_counts = jnp.exp(log_joint_dynamics_counts)
+    log_marginal_dynamics_counts = jscipy.special.logsumexp(log_marginal_curr_counts,axis=1)
+    log_conditional_dynamics_transition_counts = log_joint_dynamics_counts - log_marginal_dynamics_counts[:,None]
+    conditional_dynamics_transition_counts = jnp.exp(log_conditional_dynamics_transition_counts)
 
     transition_posterior_prob_res = {'p_transition_joint_full':mean_accumulated_joint,
                                      'p_transition_conditional_full':conditional_transition_counts,
