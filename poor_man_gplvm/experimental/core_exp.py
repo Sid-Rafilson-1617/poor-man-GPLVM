@@ -12,8 +12,8 @@ import jax.numpy as jnp
 from poor_man_gplvm import PoissonGPLVMJump1D
 from poor_man_gplvm import fit_tuning_helper as fth
 from poor_man_gplvm import gp_kernel as gpk
-from poor_man_gplvm import experimental.fit_tuning_helper_exp as fth_exp
-from poor_man_gplvm import experimental.decoder_exp as dec_exp
+from poor_man_gplvm.experimental import fit_tuning_helper_exp as fth_exp
+from poor_man_gplvm.experimental import decoder_exp as dec_exp
 
 # gain model
 # at each time learn a gain variable that controls the population
