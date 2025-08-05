@@ -54,13 +54,14 @@ def init_with_label_1D(label_tsd,n_latent_bin=100,t_l=None,seed=0,noise_scale=1e
         T = len(t_l)
         if isinstance(t_l,np.ndarray):
             t_l = nap.Ts(t_l)
-        label_tsd=t_l.value_from(label_tsd)
+        # label_tsd=t_l.value_from(label_tsd)
         # uniformly initialize everything first
         posterior = np.ones((T,n_latent_bin)) / n_latent_bin
         
         
         # index range where label_tsd is supported; assuming label_tsd is contiguous!!!
         sl = t_l.get_slice(label_tsd.time_support.start[0],label_tsd.time_support.end[0]) 
+        sl = np.arange(sl.start,sl.end,sl.step)
         print(sl)
         # set the posterior to 0/1 based on label_binned, where label_tsd is supported
         posterior[sl,:]=0.
@@ -76,7 +77,8 @@ def init_with_label_1D(label_tsd,n_latent_bin=100,t_l=None,seed=0,noise_scale=1e
         
     else:
         T = len(label_tsd)
-        posterior = np.ones((T,n_latent_bin)) / n_latent_bin
+        posterior = np.zeros((T,n_latent_bin))
+        posterior[np.arange(T),label_binned]=1.
         posterior = posterior + rng.random(posterior.shape) * noise_scale
         posterior = posterior / np.sum(posterior,axis=1,keepdims=True)
         log_p_latent = np.where(posterior>0,np.log(posterior),-1e20)
