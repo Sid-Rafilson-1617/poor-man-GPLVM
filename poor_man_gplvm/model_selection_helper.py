@@ -142,11 +142,15 @@ def model_selection_one_split(y,hyperparam_dict,train_index=None,test_index=None
     best_model_l = None
     model_to_return_l = []
     metric_overall_best = -np.inf
+
+    if 'log_posterior_init' in fit_kwargs:
+        fit_kwargs['log_posterior_init'] =fit_kwargs['log_posterior_init'][train_index]
     
     for ii,param_dict in enumerate(hyperparam_grid_l): 
         print('== Config {} of {} =='.format(ii+1,len(hyperparam_grid_l)))
         key,_ = jr.split(key)
         key_fit,key_eval = jr.split(key)
+        
         model_fit_l = fit_model_one_config(param_dict,y_train,key=key_fit,fit_kwargs=fit_kwargs,model_class_str=model_class_str,n_repeat=n_repeat)
         model_eval_result = evaluate_model_one_config(model_fit_l,y_test,key=key_eval,latent_downsample_frac=latent_downsample_frac,downsample_n_repeat=downsample_n_repeat)
         # append the best metrics to the result
