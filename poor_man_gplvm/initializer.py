@@ -37,7 +37,7 @@ def init_with_pca(y,n_latent_bin,n_pca_components=None,noise_scale=0,key=jr.PRNG
 
 
 # initialize with supervised label
-def init_with_label_1D(label_tsd,n_latent_bin=100,t_l=None,key=jr.PRNGKey(0),noise_scale=1e-3):
+def init_with_label_1D(label_tsd,n_latent_bin=100,t_l=None,seed=0,noise_scale=1e-3):
     '''
     given label, tsd, bin the label, assign the corresponding latent probability to be 1, the rest to be 0, then add some noise
     label_tsd: pynapple Tsd, value of the label
@@ -49,14 +49,14 @@ def init_with_label_1D(label_tsd,n_latent_bin=100,t_l=None,key=jr.PRNGKey(0),noi
     noise_scale: scale of noise to add to the latent initialization
     '''
     label_binned,bins = pd.cut(label_tsd,bins=n_latent_bin,retbins=True,labels=False)
-
+    rng = np.random.default_rng(seed)
     if t_l is not None:
         T = len(t_l)
         if isinstance(t_l,np.ndarray):
             t_l = nap.Ts(t_l)
         label_tsd=t_l.value_from(label_tsd)
         # uniformly initialize everything first
-        posterior = jnp.ones((T,n_latent_bin)) / n_latent_bin
+        posterior = np.ones((T,n_latent_bin)) / n_latent_bin
         
         
         # index range where label_tsd is supported; assuming label_tsd is contiguous!!!
@@ -65,17 +65,17 @@ def init_with_label_1D(label_tsd,n_latent_bin=100,t_l=None,key=jr.PRNGKey(0),noi
         posterior = posterior.at[sl,:].set(0.)
         posterior = posterior.at[sl,label_binned].set(1.)
         # add noise
-        posterior = posterior + jr.uniform(key,shape=posterior.shape) * noise_scale
+        posterior = posterior + rng.random(*posterior.shape) * noise_scale
         # normalize
-        posterior = posterior / jnp.sum(posterior,axis=1,keepdims=True)
+        posterior = posterior / np.sum(posterior,axis=1,keepdims=True)
         # convert to log
-        log_p_latent = jnp.where(posterior>0,jnp.log(posterior),-1e20)
+        log_p_latent = np.where(posterior>0,np.log(posterior),-1e20)
         
     else:
         T = len(label_tsd)
-        posterior = jnp.ones((T,n_latent_bin)) / n_latent_bin
-        posterior = posterior + jr.uniform(key,shape=posterior.shape) * noise_scale
-        posterior = posterior / jnp.sum(posterior,axis=1,keepdims=True)
-        log_p_latent = jnp.where(posterior>0,jnp.log(posterior),-1e20)
+        posterior = np.ones((T,n_latent_bin)) / n_latent_bin
+        posterior = posterior + rng.random(*posterior.shape) * noise_scale
+        posterior = posterior / np.sum(posterior,axis=1,keepdims=True)
+        log_p_latent = np.where(posterior>0,np.log(posterior),-1e20)
     return log_p_latent
     
