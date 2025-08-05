@@ -50,10 +50,11 @@ def init_with_label_1D(label_tsd,n_latent_bin=100,t_l=None,key=jr.PRNGKey(0),noi
         if isinstance(t_l,np.ndarray):
             t_l = nap.Ts(t_l)
         label_tsd=t_l.value_from(label_tsd)
-    label_binned = pd.cut(label_tsd,bins=n_latent_bin,retbins=True,labels=False)
-    log_p_latent = np.zeros((label_tsd.shape[0],n_latent_bin))
-    log_p_latent[np.arange(label_tsd.shape[0]),label_binned[0]] = 1
-    log_p_latent += jr.uniform(key,shape=log_p_latent.shape) * noise_scale
-    log_p_latent = log_p_latent - logsumexp(log_p_latent,axis=1,keepdims=True)
+    label_binned,bins = pd.cut(label_tsd,bins=n_latent_bin,retbins=True,labels=False)
+    p_latent = jnp.zeros((label_tsd.shape[0],n_latent_bin))
+    p_latent = p_latent.at[np.arange(label_tsd.shape[0]),label_binned].set(1.)
+    p_latent += jr.uniform(key,shape=p_latent.shape) * noise_scale
+    p_latent = p_latent / jnp.sum(p_latent,axis=1,keepdims=True)
+    log_p_latent = jnp.where(p_latent>0,jnp.log(p_latent),-1e20)
     return log_p_latent
     
