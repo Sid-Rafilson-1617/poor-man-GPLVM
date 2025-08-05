@@ -61,6 +61,7 @@ def init_with_label_1D(label_tsd,n_latent_bin=100,t_l=None,seed=0,noise_scale=1e
         
         # index range where label_tsd is supported; assuming label_tsd is contiguous!!!
         sl = t_l.get_slice(label_tsd.time_support.start[0],label_tsd.time_support.end[0]) 
+        print(sl)
         # set the posterior to 0/1 based on label_binned, where label_tsd is supported
         posterior[sl,:]=0.
         posterior[sl,label_binned]=1.
@@ -69,6 +70,7 @@ def init_with_label_1D(label_tsd,n_latent_bin=100,t_l=None,seed=0,noise_scale=1e
         posterior = posterior + rng.random(posterior.shape) * noise_scale
         # normalize
         posterior = posterior / np.sum(posterior,axis=1,keepdims=True)
+        print(posterior[sl,label_binned])
         # convert to log
         log_p_latent = np.where(posterior>0,np.log(posterior),-1e20)
         
