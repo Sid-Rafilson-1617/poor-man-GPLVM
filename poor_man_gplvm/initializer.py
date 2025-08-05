@@ -48,13 +48,14 @@ def init_with_label_1D(label_tsd,n_latent_bin=100,t_l=None,seed=0,noise_scale=1e
     key: random key
     noise_scale: scale of noise to add to the latent initialization
     '''
-    label_binned,bins = pd.cut(label_tsd,bins=n_latent_bin,retbins=True,labels=False)
+    
     rng = np.random.default_rng(seed)
     if t_l is not None:
         T = len(t_l)
         if isinstance(t_l,np.ndarray):
             t_l = nap.Ts(t_l)
-        # label_tsd=t_l.value_from(label_tsd)
+        label_tsd=t_l.value_from(label_tsd)
+        label_binned,bins = pd.cut(label_tsd,bins=n_latent_bin,retbins=True,labels=False)
         # uniformly initialize everything first
         posterior = np.ones((T,n_latent_bin)) / n_latent_bin
         
@@ -76,6 +77,7 @@ def init_with_label_1D(label_tsd,n_latent_bin=100,t_l=None,seed=0,noise_scale=1e
         
     else:
         T = len(label_tsd)
+        label_binned,bins = pd.cut(label_tsd,bins=n_latent_bin,retbins=True,labels=False)
         posterior = np.zeros((T,n_latent_bin))
         posterior[np.arange(T),label_binned]=1.
         posterior = posterior + rng.random(posterior.shape) * noise_scale
