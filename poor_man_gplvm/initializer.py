@@ -4,6 +4,9 @@ from sklearn.preprocessing import MinMaxScaler
 import jax.numpy as jnp
 import jax.random as jr
 from jax.scipy.special import logsumexp
+import pynapple as nap
+import numpy as np
+import pandas as pd
 
 def init_with_pca(y,n_latent_bin,n_pca_components=None,noise_scale=0,key=jr.PRNGKey(0),**kwargs):
     '''
@@ -32,6 +35,25 @@ def init_with_pca(y,n_latent_bin,n_pca_components=None,noise_scale=0,key=jr.PRNG
     log_p_latent = pca_latent_norm - logsumexp(pca_latent_norm,axis=1,keepdims=True)
     return log_p_latent
 
-# [TODO] :initialize with supervised label
-def init_with_label():
-    pass
+
+# initialize with supervised label
+def init_with_label_1D(label_tsd,n_latent_bin=100,t_l=None,key=jr.PRNGKey(0),noise_scale=1e-3):
+    '''
+    given label, tsd, bin the label, assign the corresponding latent probability to be 1, the rest to be 0, then add some noise
+    label_tsd: pynapple Tsd, value of the label
+    n_latent_bin: number of latent bins
+    t_l: time stamps for the binned spikes (and thus the latents); if None then assume label_tsd is already aligned to the binned spikes
+    key: random key
+    noise_scale: scale of noise to add to the latent initialization
+    '''
+    if t_l is not None:
+        if isinstance(t_l,np.ndarray):
+            t_l = nap.Ts(t_l)
+        label_tsd=t_l.value_from(label_tsd)
+    label_binned = pd.cut(label_tsd.value,bins=n_latent_bin,retbins=True,labels=False)
+    log_p_latent = np.zeros((label_tsd.shape[0],n_latent_bin))
+    log_p_latent[np.arange(label_tsd.shape[0]),label_binned[0]] = 1
+    log_p_latent += jr.uniform(key,shape=log_p_latent.shape) * noise_scale
+    log_p_latent = log_p_latent - logsumexp(log_p_latent,axis=1,keepdims=True)
+    return log_p_latent
+    
