@@ -57,7 +57,7 @@ def test_one_model(y_true,model_fit,n_shuffle=100,decoder_type='naive_bayes',sig
         res_true=model_fit.decode_latent_naive_bayes(y_true)
     elif decoder_type == 'dynamics':
         res_true = model_fit.decode_latent(y_true)
-    res_shuffle=pmg.test.shuffle_and_decode(model_fit,y_true,n_time_per_chunk=10000,dt_l=1,n_shuffle=n_shuffle,ep=None,decoder_type=decoder_type)
+    res_shuffle=shuffle_and_decode(model_fit,y_true,n_time_per_chunk=10000,dt_l=1,n_shuffle=n_shuffle,ep=None,decoder_type=decoder_type)
     log_marg_thresh=np.quantile(res_shuffle[sig_key],0.975,axis=0)
     is_sig = res_true[sig_key]>log_marg_thresh
     is_sig_tsd = nap.Tsd(d=is_sig,t=y_true_t)
