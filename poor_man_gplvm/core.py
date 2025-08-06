@@ -24,13 +24,7 @@ to model non jump can use the transition matrix
 at each EM iteration, create the transition matrix based on the hyperparams;
 fix lenscale, so eigenvalue and eigenvectors are fixed; but allow a latent mask in decoder such that i can do downsampled test lml for model selection;
 
-decode_latent (and decode_latent_naive_bayes) is an important method; model selection will rely on it; [will need to make sure the naming is consistent]
-
-
-
-
-
-
+[todo] currently for tuning, the latent is treated as [0,1], whereas for dynamics, the latent is treated as [0...n_latent_bin-1]; need to decide whether to make uniform
 '''
 
 # TODO:

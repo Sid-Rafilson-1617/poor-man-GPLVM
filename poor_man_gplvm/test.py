@@ -44,6 +44,29 @@ def shuffle_and_decode(model,spk_tsdf,n_time_per_chunk=10000,dt_l=1,n_shuffle=10
     decoding_res_l = {k:np.array([d[k] for d in decoding_res_l]) for k in decoding_res_l[0].keys()}
     return decoding_res_l
 
+
+def test_one_model(y_true,model_fit,n_shuffle=100,decoder_type='naive_bayes',sig_key=None):
+    y_true_t= y_true.t
+    y_true = y_true.d
+    if sig_key is None:
+        if decoder_type == 'naive_bayes':
+            sig_key = 'log_marginal_l'
+        elif decoder_type == 'dynamics':
+            sig_key ='log_one_step_predictive_marginals_all'
+    if decoder_type =='naive_bayes':
+        res_true=model_fit.decode_latent_naive_bayes(y_true)
+    elif decoder_type == 'dynamics':
+        res_true = model_fit.decode_latent(y_true)
+    res_shuffle=shuffle_and_decode(model_fit,y_true,n_time_per_chunk=10000,dt_l=1,n_shuffle=n_shuffle,ep=None,decoder_type=decoder_type)
+    log_marg_thresh=np.quantile(res_shuffle[sig_key],0.975,axis=0)
+    is_sig = res_true[sig_key]>log_marg_thresh
+    is_sig_tsd = nap.Tsd(d=is_sig,t=y_true_t)
+    
+    test_res = {'decode_res_true':res_true,'decode_res_shuffle':res_shuffle,
+                'log_marg_thresh':log_marg_thresh,'is_sig_tsd':is_sig_tsd
+               }
+    return test_res
+
 def compute_entropy(logp_l,axis=(-1,-2)):
     '''
     logp_l: n_time x n_latent or n_time x ... , by default vmap over n_time, do entropy over the rest dimensions
