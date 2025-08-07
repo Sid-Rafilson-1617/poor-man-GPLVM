@@ -670,6 +670,7 @@ class PoissonGPLVMJump1D(AbstractGPLVMJump1D):
         state = self.__dict__.copy()
         # Remove the unpicklable JIT function
         state['adam_runner'] = None
+        state['opt_state_init_fun'] = None
         return state
     
     def __setstate__(self, state):
@@ -745,13 +746,13 @@ class PoissonGPLVMJump1D(AbstractGPLVMJump1D):
         hyperparam['param_prior_std'] = hyperparam.get('param_prior_std', self.param_prior_std)
         hyperparam['smoothness_penalty'] = hyperparam.get('smoothness_penalty', self.smoothness_penalty)
         # create the adam runner
-        self.adam_runner,opt_state_init_fun = fth.make_adam_runner(
+        self.adam_runner,self.opt_state_init_fun = fth.make_adam_runner(
             fth.poisson_m_step_objective_smoothness if self.basis_type == 'bspline' else fth.poisson_m_step_objective, 
             step_size=m_step_step_size, 
             maxiter=m_step_maxiter, 
             tol=m_step_tol
         )
-        opt_state_curr = opt_state_init_fun(self.params)
+        opt_state_curr = self.opt_state_init_fun(self.params)
         em_res = super(PoissonGPLVMJump1D, self).fit_em(y, hyperparam=hyperparam, key=key, n_iter=n_iter, log_posterior_init=log_posterior_init, ma_neuron=ma_neuron, ma_latent=ma_latent, n_time_per_chunk=n_time_per_chunk, dt=dt, likelihood_scale=likelihood_scale, save_every=save_every, opt_state_curr=opt_state_curr,**kwargs)
         return em_res
 
@@ -830,6 +831,7 @@ class PoissonGPLVM1D(AbstractGPLVM1D):
         state = self.__dict__.copy()
         # Remove the unpicklable JIT function
         state['adam_runner'] = None
+        state['opt_state_init_fun'] = None
         return state
     
     def __setstate__(self, state):
@@ -907,13 +909,13 @@ class PoissonGPLVM1D(AbstractGPLVM1D):
         hyperparam['param_prior_std'] = hyperparam.get('param_prior_std', self.param_prior_std)
         hyperparam['smoothness_penalty'] = hyperparam.get('smoothness_penalty', self.smoothness_penalty)
         # create the adam runner
-        self.adam_runner, opt_state_init_fun = fth.make_adam_runner(
+        self.adam_runner, self.opt_state_init_fun = fth.make_adam_runner(
             fth.poisson_m_step_objective_smoothness if self.basis_type == 'bspline' else fth.poisson_m_step_objective, 
             step_size=m_step_step_size, 
             maxiter=m_step_maxiter, 
             tol=m_step_tol
         )
-        opt_state_curr = opt_state_init_fun(self.params)
+        opt_state_curr = self.opt_state_init_fun(self.params)
         em_res = super(PoissonGPLVM1D, self).fit_em(
             y, hyperparam=hyperparam, key=key, n_iter=n_iter, log_posterior_init=log_posterior_init, 
             ma_neuron=ma_neuron, ma_latent=ma_latent, n_time_per_chunk=n_time_per_chunk, dt=dt, 
