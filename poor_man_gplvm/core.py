@@ -274,7 +274,7 @@ class AbstractGPLVM1D(ABC):
         
         for i in tqdm.trange(n_iter):
             # M-step with optimizer state continuity
-            print(hyperparam)
+            
             m_res = self.m_step(params, y, log_posterior_curr, tuning_basis, hyperparam, 
                               opt_state_curr=opt_state_curr)
             if i == 0:
@@ -582,6 +582,7 @@ class AbstractGPLVMJump1D(ABC):
         
         
         for i in tqdm.trange(n_iter):
+            print(hyperparam)
             # M-step with optimizer state continuity
             m_res = self.m_step(params, y, log_posterior_curr, tuning_basis, hyperparam, opt_state_curr=opt_state_curr)
             if i==0:
