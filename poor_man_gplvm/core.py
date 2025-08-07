@@ -408,6 +408,7 @@ class AbstractGPLVMJump1D(ABC):
     
     # this is a more convenient call after fitting; hyperparam is used when available, if not then use the self.xxx
     def decode_latent(self,y,tuning=None,hyperparam={},ma_neuron=None,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000):
+        
         if tuning is None:
             tuning = self.tuning
         if ma_neuron is None:
@@ -791,12 +792,14 @@ class GaussianGPLVMJump1D(AbstractGPLVMJump1D):
         return log_acausal_posterior_all,log_marginal_final,log_causal_posterior_all,log_one_step_predictive_marginals_allchunk,log_accumulated_joint_total,log_likelihood_all
 
     def decode_latent(self,y,tuning=None,hyperparam={},ma_neuron=None,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000):
-        hyperparam['noise_std'] = hyperparam.get('noise_std',self.noise_std)
-        return super(GaussianGPLVMJump1D,self).decode_latent(y,tuning=tuning,hyperparam=hyperparam,ma_neuron=ma_neuron,ma_latent=ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk)
+        hyperparam_ = hyperparam.copy() # don't mutate the original hyperparam otherwise weird things can happen
+        hyperparam_['noise_std'] = hyperparam_.get('noise_std',self.noise_std)
+        return super(GaussianGPLVMJump1D,self).decode_latent(y,tuning=tuning,hyperparam=hyperparam_,ma_neuron=ma_neuron,ma_latent=ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk)
     
     def decode_latent_naive_bayes(self,y,tuning=None,hyperparam={},ma_neuron=None,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000,dt_l=1.):
-        hyperparam['noise_std'] = hyperparam.get('noise_std',self.noise_std)
-        return super(GaussianGPLVMJump1D,self).decode_latent_naive_bayes(y,tuning=tuning,hyperparam=hyperparam,ma_neuron=ma_neuron,ma_latent=ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk,dt_l=dt_l,observation_model='gaussian')
+        hyperparam_ = hyperparam.copy() # don't mutate the original hyperparam otherwise weird things can happen
+        hyperparam_['noise_std'] = hyperparam_.get('noise_std',self.noise_std)
+        return super(GaussianGPLVMJump1D,self).decode_latent_naive_bayes(y,tuning=tuning,hyperparam=hyperparam_,ma_neuron=ma_neuron,ma_latent=ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk,dt_l=dt_l,observation_model='gaussian')
 
     def sample_y(self,latent_l,hyperparam={},tuning=None,dt=1.,key=jax.random.PRNGKey(10)):
         if tuning is None:
@@ -960,16 +963,18 @@ class GaussianGPLVM1D(AbstractGPLVM1D):
 
     def decode_latent(self, y, tuning=None, hyperparam={}, ma_neuron=None, ma_latent=None, 
                      likelihood_scale=1., n_time_per_chunk=10000):
-        hyperparam['noise_std'] = hyperparam.get('noise_std', self.noise_std)
+        hyperparam_ = hyperparam.copy() # don't mutate the original hyperparam otherwise weird things can happen
+        hyperparam_['noise_std'] = hyperparam_.get('noise_std', self.noise_std)
         return super(GaussianGPLVM1D, self).decode_latent(
-            y, tuning=tuning, hyperparam=hyperparam, ma_neuron=ma_neuron, ma_latent=ma_latent, 
+            y, tuning=tuning, hyperparam=hyperparam_, ma_neuron=ma_neuron, ma_latent=ma_latent, 
             likelihood_scale=likelihood_scale, n_time_per_chunk=n_time_per_chunk)
     
     def decode_latent_naive_bayes(self, y, tuning=None, hyperparam={}, ma_neuron=None, ma_latent=None, 
                                  likelihood_scale=1., n_time_per_chunk=10000, dt_l=1.):
-        hyperparam['noise_std'] = hyperparam.get('noise_std', self.noise_std)
+        hyperparam_ = hyperparam.copy() # don't mutate the original hyperparam otherwise weird things can happen
+        hyperparam_['noise_std'] = hyperparam_.get('noise_std', self.noise_std)
         return super(GaussianGPLVM1D, self).decode_latent_naive_bayes(
-            y, tuning=tuning, hyperparam=hyperparam, ma_neuron=ma_neuron, ma_latent=ma_latent, 
+            y, tuning=tuning, hyperparam=hyperparam_, ma_neuron=ma_neuron, ma_latent=ma_latent, 
             likelihood_scale=likelihood_scale, n_time_per_chunk=n_time_per_chunk, dt_l=dt_l, 
             observation_model='gaussian')
 
