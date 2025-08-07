@@ -61,7 +61,7 @@ class AbstractGPLVM1D(ABC):
     
     def __init__(self, n_neuron, n_latent_bin=100, tuning_lengthscale=5., param_prior_std=1.,
                  movement_variance=1., explained_variance_threshold_basis=0.999,
-                 rng_init_int=123, w_init_variance=1., w_init_mean=0.,basis_type='rbf'):
+                 rng_init_int=123, w_init_variance=1., w_init_mean=0.,basis_type='rbf',smoothness_penalty=0.):
         self.n_latent_bin = n_latent_bin
         self.tuning_lengthscale = tuning_lengthscale
         self.param_prior_std = param_prior_std
@@ -73,7 +73,7 @@ class AbstractGPLVM1D(ABC):
         self.possible_latent_bin = jnp.arange(self.n_latent_bin)
         self.w_init_variance = w_init_variance
         self.w_init_mean = w_init_mean
-
+        self.smoothness_penalty = smoothness_penalty
         # generate the basis
         self.basis_type = basis_type
         self.tuning_basis = generate_basis(self.tuning_lengthscale, self.n_latent_bin, 
@@ -341,7 +341,8 @@ class AbstractGPLVMJump1D(ABC):
                  w_init_mean=0.,
                  p_move_to_jump=0.01,
                  p_jump_to_move=0.01,
-                 basis_type='rbf'
+                 basis_type='rbf',
+                 smoothness_penalty=0.
                  ):
         self.n_latent_bin = n_latent_bin
         self.tuning_lengthscale = tuning_lengthscale
@@ -364,7 +365,7 @@ class AbstractGPLVMJump1D(ABC):
         self.basis_type = basis_type
         self.tuning_basis = generate_basis(self.tuning_lengthscale,self.n_latent_bin,self.explained_variance_threshold_basis,include_bias=True,basis_type=basis_type)
         self.n_basis = self.tuning_basis.shape[1]
-       
+        self.smoothness_penalty = smoothness_penalty
         # default masks
         self.ma_neuron_default = jnp.ones(self.n_neuron)
         self.ma_latent_default = jnp.ones(self.n_latent_bin)
@@ -742,7 +743,7 @@ class PoissonGPLVMJump1D(AbstractGPLVMJump1D):
                m_step_step_size=0.01, m_step_maxiter=1000, m_step_tol=1e-6,
                **kwargs):
         hyperparam['param_prior_std'] = hyperparam.get('param_prior_std', self.param_prior_std)
-        
+        hyperparam['smoothness_penalty'] = hyperparam.get('smoothness_penalty', self.smoothness_penalty)
         # create the adam runner
         self.adam_runner,opt_state_init_fun = fth.make_adam_runner(
             fth.poisson_m_step_objective_smoothness if self.basis_type == 'bspline' else fth.poisson_m_step_objective, 
@@ -904,7 +905,7 @@ class PoissonGPLVM1D(AbstractGPLVM1D):
                save_every=None, m_step_step_size=0.01, m_step_maxiter=1000, m_step_tol=1e-6,
                **kwargs):
         hyperparam['param_prior_std'] = hyperparam.get('param_prior_std', self.param_prior_std)
-        
+        hyperparam['smoothness_penalty'] = hyperparam.get('smoothness_penalty', self.smoothness_penalty)
         # create the adam runner
         self.adam_runner, opt_state_init_fun = fth.make_adam_runner(
             fth.poisson_m_step_objective_smoothness if self.basis_type == 'bspline' else fth.poisson_m_step_objective, 
