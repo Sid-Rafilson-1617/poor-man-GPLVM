@@ -78,6 +78,46 @@ def poisson_m_step_objective(param,hyperparam,basis_mat,y_weighted,t_weighted):
     log_prior = jax.scipy.stats.norm.logpdf(param,0,param_prior_std).sum()
     return -log_likelihood - log_prior
 
+def poisson_m_step_objective_smoothness(param,hyperparam,basis_mat,y_weighted,t_weighted):
+    '''
+    used for bspline basis smoothness penalty; penalize the squared second derivative of the tuning curve;
+    param: n_basis x n_neuron
+    basis_mat: n_latent x n_basis
+    y_weighted: n_latent x n_neuron
+    t_weighted: n_latent
+    
+    return:
+    negative log joint
+    '''
+    param_prior_std = hyperparam['param_prior_std']
+    smoothness_penalty = hyperparam['smoothness_penalty'] # if using bspline basis
+    pf_hat = get_tuning_softplus(param,basis_mat) # n_latent x n_neuron
+    # Get tuning curves for each neuron (n_latent x n_neuron)
+    tuning_curves = pf_hat
+    
+    # Calculate second order finite differences for each neuron's tuning curve
+    # Exclude edges since we're not using periodic boundary conditions
+    center = tuning_curves[1:-1]  # All but first and last points
+    forward1 = tuning_curves[2:]  # From second point to end
+    backward1 = tuning_curves[:-2]  # From start to second-to-last point
+    
+    # Second derivative approximation
+    second_diff = forward1 - 2*center + backward1
+    
+    # Square the differences and sum for each neuron
+    roughness = jnp.sum(second_diff**2, axis=0)  # Sum over latent positions for each neuron
+    total_roughness = jnp.sum(roughness)  # Sum over neurons
+    
+    # Add weighted roughness penalty to objective
+    roughness_term = smoothness_penalty * total_roughness
+    # log_likelihood = jax.scipy.stats.poisson.logpmf(y_weighted,yhat * t_weighted[:,None]).sum()
+
+    norm_term = pf_hat * t_weighted[:,None] # n_latent x n_neuron
+    fit_term = vmap(jscipy.special.xlogy,in_axes=(1,1),out_axes=1)(y_weighted,pf_hat+1e-20) # n_latent x n_neuron
+    log_likelihood = jnp.sum(fit_term - norm_term) # crucial, this is different from poisson logpmf(s_b_one, pf_one*t_b)!!!!
+    log_prior = jax.scipy.stats.norm.logpdf(param,0,param_prior_std).sum()
+    return -log_likelihood - log_prior + roughness_term
+
 import optax
 from jax import tree_util
 

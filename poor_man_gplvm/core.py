@@ -27,6 +27,7 @@ at each EM iteration, create the transition matrix based on the hyperparams;
 fix lenscale, so eigenvalue and eigenvectors are fixed; but allow a latent mask in decoder such that i can do downsampled test lml for model selection;
 
 Notice for tuning_lengthscale and movement_variance, their values divided by n_latent_bin are the effective values; 
+Currently smoothness penalty for bspline is only supposed for Poisson models
 '''
 
 # TODO:
@@ -74,6 +75,7 @@ class AbstractGPLVM1D(ABC):
         self.w_init_mean = w_init_mean
 
         # generate the basis
+        self.basis_type = basis_type
         self.tuning_basis = generate_basis(self.tuning_lengthscale, self.n_latent_bin, 
                                          self.explained_variance_threshold_basis, include_bias=True,basis_type=basis_type)
         self.n_basis = self.tuning_basis.shape[1]
@@ -359,6 +361,7 @@ class AbstractGPLVMJump1D(ABC):
         # self.b_init_mean = b_init_mean
 
         # generate the basis
+        self.basis_type = basis_type
         self.tuning_basis = generate_basis(self.tuning_lengthscale,self.n_latent_bin,self.explained_variance_threshold_basis,include_bias=True,basis_type=basis_type)
         self.n_basis = self.tuning_basis.shape[1]
        
@@ -742,7 +745,7 @@ class PoissonGPLVMJump1D(AbstractGPLVMJump1D):
         
         # create the adam runner
         self.adam_runner,opt_state_init_fun = fth.make_adam_runner(
-            fth.poisson_m_step_objective, 
+            fth.poisson_m_step_objective_smoothness if self.basis_type == 'bspline' else fth.poisson_m_step_objective, 
             step_size=m_step_step_size, 
             maxiter=m_step_maxiter, 
             tol=m_step_tol
@@ -904,7 +907,7 @@ class PoissonGPLVM1D(AbstractGPLVM1D):
         
         # create the adam runner
         self.adam_runner, opt_state_init_fun = fth.make_adam_runner(
-            fth.poisson_m_step_objective, 
+            fth.poisson_m_step_objective_smoothness if self.basis_type == 'bspline' else fth.poisson_m_step_objective, 
             step_size=m_step_step_size, 
             maxiter=m_step_maxiter, 
             tol=m_step_tol
