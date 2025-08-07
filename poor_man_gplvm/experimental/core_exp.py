@@ -176,7 +176,8 @@ class PoissonGPLVMGain1D_gain(PoissonGPLVMJump1D):
                m_step_step_size=0.01, m_step_maxiter=1000, m_step_tol=1e-6,
                **kwargs):
                
-        hyperparam['param_prior_std'] = hyperparam.get('param_prior_std', self.param_prior_std)
+        hyperparam_ = hyperparam.copy()  # don't mutate the original hyperparam otherwise weird things can happen
+        hyperparam_['param_prior_std'] = hyperparam_.get('param_prior_std', self.param_prior_std)
         
         # Initialize gain if not provided
         if gain_init is None:
@@ -195,9 +196,9 @@ class PoissonGPLVMGain1D_gain(PoissonGPLVMJump1D):
         opt_state_curr = opt_state_init_fun(self.params)
         
         # Initialize transition kernels
-        movement_variance = hyperparam.get('movement_variance', self.movement_variance)
-        p_move_to_jump = hyperparam.get('p_move_to_jump', self.p_move_to_jump)
-        p_jump_to_move = hyperparam.get('p_jump_to_move', self.p_jump_to_move)
+        movement_variance = hyperparam_.get('movement_variance', self.movement_variance)
+        p_move_to_jump = hyperparam_.get('p_move_to_jump', self.p_move_to_jump)
+        p_jump_to_move = hyperparam_.get('p_jump_to_move', self.p_jump_to_move)
         
         _, self.log_latent_transition_kernel_l, _, self.log_dynamics_transition_kernel = gpk.create_transition_prob_1d(
             self.possible_latent_bin, self.possible_dynamics, movement_variance, p_move_to_jump, p_jump_to_move)
@@ -230,7 +231,7 @@ class PoissonGPLVMGain1D_gain(PoissonGPLVMJump1D):
             
             # M-step: update both tuning and gain
             m_step_res = self.m_step(param_curr, y, log_posterior_curr, self.tuning_basis, 
-                                   hyperparam, opt_state_curr, gain_curr) # attributes like params and gain are updated
+                                   hyperparam_, opt_state_curr, gain_curr) # attributes like params and gain are updated
             param_curr = m_step_res['params']
             gain_curr = m_step_res['gain']
             opt_state_curr = m_step_res['opt_state']
@@ -243,10 +244,10 @@ class PoissonGPLVMGain1D_gain(PoissonGPLVMJump1D):
             
             # Use gain-aware decoder
             decode_res = self._decode_latent(
-                y, tuning, hyperparam, 
+                y, tuning, hyperparam_, 
                 self.log_latent_transition_kernel_l, self.log_dynamics_transition_kernel,
                 ma_neuron, ma_latent, likelihood_scale, n_time_per_chunk, gain_curr)
-            log_posterior_all, log_marginal_final, log_causal_posterior_all, log_accumulated_joint_total, log_likelihood_all = decode_res
+            log_posterior_all, log_marginal_final, log_causal_posterior_all, log_one_step_predictive_marginals, log_accumulated_joint_total, log_likelihood_all = decode_res
             log_posterior_curr = logsumexp(log_posterior_all,axis=1) # sum over the dynamics dimension; get log posterior over latent
             
             log_marginal_l.append(log_marginal_final)

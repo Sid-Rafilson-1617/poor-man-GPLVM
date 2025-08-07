@@ -165,7 +165,81 @@ def poisson_m_step_objective_gain(weight, hyperparam, basis_mat, y_weighted, t_w
 
 import optax
 from jax import tree_util
-from poor_man_gplvm.fit_tuning_helper import make_adam_runner, tree_l2_norm
+from poor_man_gplvm.fit_tuning_helper import tree_l2_norm
+
+def make_adam_runner(fun, step_size, maxiter=1000, tol=1e-6):
+    '''
+    make a function that run adam optimizer with a given objective function
+    This version handles the gain case with additional arguments
+    '''
+    
+    # fun(params, *args) -> loss scalar
+    opt = optax.adam(step_size)
+    init_fun = opt.init
+    @jax.jit
+    def run(init_params, opt_state, *args):
+        # Always receives a valid optimizer state (initialization handled outside)
+    
+        params = init_params
+        
+        # compute initial error (e.g. gradient norm)
+        loss, grads = jax.value_and_grad(fun)(params, *args)
+        error = tree_l2_norm(grads)  # Keep for monitoring
+
+        # Pre-allocate history arrays (JIT-compatible)
+        loss_history = jnp.zeros(maxiter)
+        error_history = jnp.zeros(maxiter)
+        
+        # Set initial values
+        loss_history = loss_history.at[0].set(loss)
+        error_history = error_history.at[0].set(error)
+
+        # carry: (iter, params, opt_state, error, loss, loss_prev, loss_history, error_history)
+        carry = (0, params, opt_state, error, loss, loss, loss_history, error_history)  # loss_prev = loss initially
+
+        def cond_fun(carry):
+            i, params, opt_state, error, loss, loss_prev, loss_history, error_history = carry
+            # Continue if: haven't hit maxiter AND (still in warmup OR loss is still changing significantly)
+            min_iters = 5  # Run at least 5 iterations before checking convergence
+            relative_loss_change = jnp.abs(loss - loss_prev) / jnp.maximum(jnp.abs(loss), 1e-8)
+            
+            in_warmup = i < min_iters
+            not_converged = relative_loss_change > tol
+            not_maxed_out = i < (maxiter - 1)
+            
+            return not_maxed_out & (in_warmup | not_converged)
+
+        def body_fun(carry):
+            i, params, opt_state, error, loss, loss_prev, loss_history, error_history = carry
+            new_loss, grads = jax.value_and_grad(fun)(params, *args)
+            updates, new_opt_state = opt.update(grads, opt_state, params)
+            new_params = optax.apply_updates(params, updates)
+            new_error = tree_l2_norm(grads)
+            
+            # Update histories
+            new_i = i + 1
+            new_loss_history = loss_history.at[new_i].set(new_loss)
+            new_error_history = error_history.at[new_i].set(new_error)
+            
+            # Pass current loss as previous loss for next iteration
+            return (new_i, new_params, new_opt_state, new_error, new_loss, loss, new_loss_history, new_error_history)
+
+        # run the loop
+        i, params, opt_state, error, loss, loss_prev, loss_history, error_history = jax.lax.while_loop(cond_fun, body_fun, carry)
+        
+        # Return full arrays with actual length - trimming handled outside JIT for shape stability
+        n_actual_iter = i + 1
+        
+        adam_res = {'params': params, 
+                   'opt_state': opt_state,         # Return updated optimizer state
+                   'n_iter': n_actual_iter, 
+                   'final_loss': loss, 
+                   'final_error': error,
+                   'loss_history': loss_history,      # Full array (maxiter length)
+                   'error_history': error_history}    # Full array (maxiter length)
+        return adam_res
+
+    return run, init_fun
 
 
 

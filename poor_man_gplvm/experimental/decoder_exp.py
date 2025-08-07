@@ -190,8 +190,8 @@ def filter_all_step_combined_ma_gain(y, tuning, hyperparam, log_latent_transitio
     '''
     gain_l = jnp.broadcast_to(gain_l, y.shape[0])
     log_likelihood_all = get_loglikelihood_ma_all_gain(y, tuning, hyperparam, ma_neuron, ma_latent, gain_l, observation_model=observation_model)
-    log_posterior_all, log_marginal_final, log_prior_curr_all = filter_all_step(log_likelihood_all, log_latent_transition_kernel_l, log_dynamics_transition_kernel, carry_init=carry_init, likelihood_scale=likelihood_scale)
-    return log_posterior_all, log_marginal_final, log_prior_curr_all, log_likelihood_all
+    log_posterior_all, log_marginal_final, log_prior_curr_all, log_one_step_predictive_marginals = filter_all_step(log_likelihood_all, log_latent_transition_kernel_l, log_dynamics_transition_kernel, carry_init=carry_init, likelihood_scale=likelihood_scale)
+    return log_posterior_all, log_marginal_final, log_prior_curr_all, log_one_step_predictive_marginals, log_likelihood_all
 
 
 
@@ -209,6 +209,7 @@ def smooth_all_step_combined_ma_chunk_gain(y, tuning, hyperparam, log_latent_tra
     log_causal_posterior_all_allchunk = []
     log_causal_prior_all_allchunk = []
     log_acausal_posterior_all_allchunk = []
+    log_one_step_predictive_marginals_allchunk = []
     log_likelihood_all_allchunk = []
 
     if ma_latent is None:
@@ -222,7 +223,7 @@ def smooth_all_step_combined_ma_chunk_gain(y, tuning, hyperparam, log_latent_tra
         ma_neuron_chunk = jnp.broadcast_to(ma_neuron, y_chunk.shape)
         gain_l_chunk = gain_l[sl]
         
-        log_causal_posterior_all, log_marginal_final, log_causal_prior_all, log_likelihood_all = filter_all_step_combined_ma_gain(
+        log_causal_posterior_all, log_marginal_final, log_causal_prior_all, log_one_step_predictive_marginals, log_likelihood_all = filter_all_step_combined_ma_gain(
             y_chunk, tuning, hyperparam, log_latent_transition_kernel_l, log_dynamics_transition_kernel, 
             ma_neuron_chunk, ma_latent, carry_init=filter_carry_init, likelihood_scale=likelihood_scale, 
             observation_model=observation_model, gain_l=gain_l_chunk)
@@ -230,9 +231,11 @@ def smooth_all_step_combined_ma_chunk_gain(y, tuning, hyperparam, log_latent_tra
         filter_carry_init = (log_causal_posterior_all[-1], log_marginal_final)
         log_causal_posterior_all_allchunk.append(log_causal_posterior_all)
         log_causal_prior_all_allchunk.append(log_causal_prior_all)
+        log_one_step_predictive_marginals_allchunk.append(log_one_step_predictive_marginals)
         log_likelihood_all_allchunk.append(log_likelihood_all)
     
     log_causal_prior_all_ = jnp.concatenate(log_causal_prior_all_allchunk, axis=0)
+    log_one_step_predictive_marginals_allchunk = jnp.concatenate(log_one_step_predictive_marginals_allchunk, axis=0)
     log_likelihood_all_concat = jnp.concatenate(log_likelihood_all_allchunk, axis=0)
 
     smooth_carry_init = None
@@ -241,14 +244,17 @@ def smooth_all_step_combined_ma_chunk_gain(y, tuning, hyperparam, log_latent_tra
         log_causal_prior_all = log_causal_prior_all_[sl.start+1:sl.stop+1]
         log_causal_posterior_all = log_causal_posterior_all_allchunk[n]
         
-        log_acausal_posterior_all, log_accumulated_joint_chunk = smooth_all_step(
+        log_acausal_posterior_all = smooth_all_step(
             log_causal_posterior_all, log_causal_prior_all, log_latent_transition_kernel_l, 
             log_dynamics_transition_kernel, carry_init=smooth_carry_init)
-        smooth_carry_init = (log_acausal_posterior_all[0], log_accumulated_joint_chunk)
+        smooth_carry_init = log_acausal_posterior_all[0]
         log_acausal_posterior_all_allchunk.append(log_acausal_posterior_all)
     
     log_acausal_posterior_all_allchunk.reverse()
     log_acausal_posterior_all = jnp.concatenate(log_acausal_posterior_all_allchunk, axis=0)
     log_causal_posterior_all = jnp.concatenate(log_causal_posterior_all_allchunk, axis=0)
     
-    return log_acausal_posterior_all, log_marginal_final, log_causal_posterior_all, log_accumulated_joint_chunk, log_likelihood_all_concat
+    # Note: experimental smooth_all_step doesn't return accumulated joint, so set to None
+    log_accumulated_joint_total = None
+    
+    return log_acausal_posterior_all, log_marginal_final, log_causal_posterior_all, log_one_step_predictive_marginals_allchunk, log_accumulated_joint_total, log_likelihood_all_concat
