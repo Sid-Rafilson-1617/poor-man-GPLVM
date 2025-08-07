@@ -746,10 +746,11 @@ class PoissonGPLVMJump1D(AbstractGPLVMJump1D):
                save_every=None, 
                m_step_step_size=0.01, m_step_maxiter=1000, m_step_tol=1e-6,
                **kwargs):
-        hyperparam['param_prior_std'] = hyperparam.get('param_prior_std', self.param_prior_std)
-        hyperparam['smoothness_penalty'] = hyperparam.get('smoothness_penalty', self.smoothness_penalty)
-        print('from subclass fit_em')
-        print(hyperparam)
+        hyperparam_ = hyperparam.copy() # don't mutate the original hyperparam otherwise weird things can happen
+        hyperparam_['param_prior_std'] = hyperparam_.get('param_prior_std', self.param_prior_std)
+        hyperparam_['smoothness_penalty'] = hyperparam_.get('smoothness_penalty', self.smoothness_penalty)
+        # print('from subclass fit_em')
+        # print(hyperparam_)
         # create the adam runner
         self.adam_runner,self.opt_state_init_fun = fth.make_adam_runner(
             fth.poisson_m_step_objective_smoothness if self.basis_type == 'bspline' else fth.poisson_m_step_objective, 
@@ -758,7 +759,7 @@ class PoissonGPLVMJump1D(AbstractGPLVMJump1D):
             tol=m_step_tol
         )
         opt_state_curr = self.opt_state_init_fun(self.params)
-        em_res = super(PoissonGPLVMJump1D, self).fit_em(y, hyperparam=hyperparam, key=key, n_iter=n_iter, log_posterior_init=log_posterior_init, ma_neuron=ma_neuron, ma_latent=ma_latent, n_time_per_chunk=n_time_per_chunk, dt=dt, likelihood_scale=likelihood_scale, save_every=save_every, opt_state_curr=opt_state_curr,**kwargs)
+        em_res = super(PoissonGPLVMJump1D, self).fit_em(y, hyperparam=hyperparam_, key=key, n_iter=n_iter, log_posterior_init=log_posterior_init, ma_neuron=ma_neuron, ma_latent=ma_latent, n_time_per_chunk=n_time_per_chunk, dt=dt, likelihood_scale=likelihood_scale, save_every=save_every, opt_state_curr=opt_state_curr,**kwargs)
         return em_res
 
 
@@ -820,9 +821,10 @@ class GaussianGPLVMJump1D(AbstractGPLVMJump1D):
                       log_posterior_init=None,ma_neuron=None,ma_latent=None,n_time_per_chunk=10000,dt=1.,likelihood_scale=1.,
                       save_every=None,
                       **kwargs):
-        hyperparam['noise_std'] = hyperparam.get('noise_std',self.noise_std)
-        hyperparam['param_prior_std'] = hyperparam.get('param_prior_std',self.param_prior_std)
-        em_res=super(GaussianGPLVMJump1D,self).fit_em(y,hyperparam,key,n_iter,log_posterior_init,ma_neuron,ma_latent,n_time_per_chunk,dt,likelihood_scale,save_every,**kwargs)
+        hyperparam_ = hyperparam.copy() # don't mutate the original hyperparam otherwise weird things can happen
+        hyperparam_['noise_std'] = hyperparam_.get('noise_std',self.noise_std)
+        hyperparam_['param_prior_std'] = hyperparam_.get('param_prior_std',self.param_prior_std)
+        em_res=super(GaussianGPLVMJump1D,self).fit_em(y,hyperparam=hyperparam_,key=key,n_iter=n_iter,log_posterior_init=log_posterior_init,ma_neuron=ma_neuron,ma_latent=ma_latent,n_time_per_chunk=n_time_per_chunk,dt=dt,likelihood_scale=likelihood_scale,save_every=save_every,**kwargs)
         return em_res
 
 
@@ -911,8 +913,9 @@ class PoissonGPLVM1D(AbstractGPLVM1D):
                ma_neuron=None, ma_latent=None, n_time_per_chunk=10000, dt=1., likelihood_scale=1.,
                save_every=None, m_step_step_size=0.01, m_step_maxiter=1000, m_step_tol=1e-6,
                **kwargs):
-        hyperparam['param_prior_std'] = hyperparam.get('param_prior_std', self.param_prior_std)
-        hyperparam['smoothness_penalty'] = hyperparam.get('smoothness_penalty', self.smoothness_penalty)
+        hyperparam_ = hyperparam.copy() # don't mutate the original hyperparam otherwise weird things can happen
+        hyperparam_['param_prior_std'] = hyperparam_.get('param_prior_std', self.param_prior_std)
+        hyperparam_['smoothness_penalty'] = hyperparam_.get('smoothness_penalty', self.smoothness_penalty)
         # create the adam runner
         self.adam_runner, self.opt_state_init_fun = fth.make_adam_runner(
             fth.poisson_m_step_objective_smoothness if self.basis_type == 'bspline' else fth.poisson_m_step_objective, 
@@ -922,7 +925,7 @@ class PoissonGPLVM1D(AbstractGPLVM1D):
         )
         opt_state_curr = self.opt_state_init_fun(self.params)
         em_res = super(PoissonGPLVM1D, self).fit_em(
-            y, hyperparam=hyperparam, key=key, n_iter=n_iter, log_posterior_init=log_posterior_init, 
+            y, hyperparam=hyperparam_, key=key, n_iter=n_iter, log_posterior_init=log_posterior_init, 
             ma_neuron=ma_neuron, ma_latent=ma_latent, n_time_per_chunk=n_time_per_chunk, dt=dt, 
             likelihood_scale=likelihood_scale, save_every=save_every, opt_state_curr=opt_state_curr, **kwargs)
         return em_res
@@ -991,10 +994,11 @@ class GaussianGPLVM1D(AbstractGPLVM1D):
     def fit_em(self, y, hyperparam={}, key=jax.random.PRNGKey(0), n_iter=20,
                log_posterior_init=None, ma_neuron=None, ma_latent=None, n_time_per_chunk=10000, 
                dt=1., likelihood_scale=1., save_every=None, **kwargs):
-        hyperparam['noise_std'] = hyperparam.get('noise_std', self.noise_std)
-        hyperparam['param_prior_std'] = hyperparam.get('param_prior_std', self.param_prior_std)
+        hyperparam_ = hyperparam.copy() # don't mutate the original hyperparam otherwise weird things can happen
+        hyperparam_['noise_std'] = hyperparam_.get('noise_std', self.noise_std)
+        hyperparam_['param_prior_std'] = hyperparam_.get('param_prior_std', self.param_prior_std)
         em_res = super(GaussianGPLVM1D, self).fit_em(
-            y, hyperparam, key, n_iter, log_posterior_init, ma_neuron, ma_latent, 
-            n_time_per_chunk, dt, likelihood_scale, save_every, **kwargs)
+            y, hyperparam=hyperparam_, key=key, n_iter=n_iter, log_posterior_init=log_posterior_init, ma_neuron=ma_neuron, ma_latent=ma_latent, 
+            n_time_per_chunk=n_time_per_chunk, dt=dt, likelihood_scale=likelihood_scale, save_every=save_every, **kwargs)
         return em_res
     
