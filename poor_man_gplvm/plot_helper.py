@@ -16,6 +16,6 @@ def save_fig(fig,fig_name,fig_dir='./figs',fig_format=['png','svg'],dpi=300):
     if not os.path.exists(fig_dir):
         os.makedirs(fig_dir)
     for fmt in fig_format:
-        fig.savefig(os.path.join(fig_dir,fig_name+f'.{fmt}'),dpi=dpi)
+        fig.savefig(os.path.join(fig_dir,fig_name+f'.{fmt}'),dpi=dpi,bbox_inches='tight')
         print(f'saved {fig_name}.{fmt} to {fig_dir}')
     plt.close(fig)
