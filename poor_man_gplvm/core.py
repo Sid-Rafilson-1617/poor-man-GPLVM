@@ -383,7 +383,7 @@ class AbstractGPLVMJump1D(ABC):
         pass
     
     def initialize_params(self,key):
-        params_init_w = jax.random.normal(key,(self.n_basis,self.n_neuron)) * jnp.sqrt(self.w_init_variance) # prior_hyper here is variance
+        params_init_w = jax.random.normal(key,(self.n_basis,self.n_neuron)) * jnp.sqrt(self.w_init_variance) + self.w_init_mean # prior_hyper here is variance
         # params_init_b = jax.random.normal(key,(self.n_neuron,)) * jnp.sqrt(self.b_init_variance) + self.b_init_mean
         # params_init = (params_init_w,params_init_b)
         params_init = params_init_w
