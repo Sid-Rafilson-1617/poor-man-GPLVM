@@ -176,7 +176,6 @@ def model_selection_one_split(y,hyperparam_dict,train_index=None,test_index=None
         key_fit,key_eval = jr.split(key)
         
         model_fit_l,em_res_l = fit_model_one_config(param_dict,y_train,key=key_fit,fit_kwargs=fit_kwargs,model_class_str=model_class_str,n_repeat=n_repeat)
-        print(model_fit_l)
         model_eval_result = evaluate_model_one_config(model_fit_l,y_test,key=key_eval,latent_downsample_frac=latent_downsample_frac,downsample_n_repeat=downsample_n_repeat,metric_type_l=metric_type_l,jump_dynamics_index=jump_dynamics_index,jump_consensus_window_size=jump_consensus_window_size,jump_consensus_jump_p_thresh=jump_consensus_jump_p_thresh,jump_consensus_consensus_thresh=jump_consensus_consensus_thresh)
         # append the best metrics to the result
         if model_eval_result_all_configs == {}:
