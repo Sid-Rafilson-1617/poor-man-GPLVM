@@ -42,6 +42,8 @@ def rbf_kernel(X, Y=None, length_scale=1.0):
 # post fit neuron sorting + normalization; used in post fit visualization
 def post_fit_sort_neuron(fit_res,spk=None,do_norm='max',method='tuning_peak',t_l=None):
     '''
+    fit_res: dict, usually from fit_em, but if that is not available, usuallly can do {'tuning':model_fit.tuning}; this way to ensure other types of sorting is compatible in the future
+
     fit result: can include tuning or posterior, depending on the sorting method
     spk: binned spike: n_time x n_neuron, if not provided, then only return the argsort; if provided, return the sorted and optionally normalized spk
     # if t_l (timestamps) is provided, return a TsdFrame
