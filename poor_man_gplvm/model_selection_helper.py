@@ -243,24 +243,27 @@ def get_jump_consensus(jump_p,jump_p_all_chain,window_size=5,jump_p_thresh = 0.4
     jump_p_thresh: threshold for a jump
 
     start with the best fit, find the jumps, 
-    then check if the jumps are consistent across chains, i.e. a jump occurs within a window in all other chains
+    then check if the jumps are consistent across chains, i.e. a jump occurs within a window in most other chains ( > consensus_thresh)
 
+    frac_consensus: fraction of jumps that are consistent across chains
+    jump_time_index_consensus: time index of the jumps that are consistent across chains, n_jump
+    whether_consensus_ma: whether the jump is consistent across chains, n_time
     '''
 
     jump_time_index = np.nonzero(jump_p >= jump_p_thresh)[0]
 
     # only keep the jump that is common to all chains; ie for each jump there's some jump within some window for other chains
     jump_time_index_consensus = []
-    whether_all_chain_has_jump_ma = []
+    whether_consensus_ma = []
     for jti in jump_time_index:
-        # whether_all_chain_has_jump=(jump_p_all_chain[jti-window_size:jti+window_size,:] > jump_p_thresh).any(axis=0).all()
-        whether_all_chain_has_jump=(jump_p_all_chain[jti-window_size:jti+window_size,:] > jump_p_thresh).any(axis=0).mean()>=consensus_thresh # instead of requiring all chains, require a certain fraction of chains to have a jump
-        whether_all_chain_has_jump_ma.append(whether_all_chain_has_jump)
-        if whether_all_chain_has_jump:
+        # whether_consensus=(jump_p_all_chain[jti-window_size:jti+window_size,:] > jump_p_thresh).any(axis=0).all()
+        whether_consensus=(jump_p_all_chain[jti-window_size:jti+window_size,:] > jump_p_thresh).any(axis=0).mean()>=consensus_thresh # instead of requiring all chains, require a certain fraction of chains to have a jump
+        whether_consensus_ma.append(whether_consensus)
+        if whether_consensus:
             jump_time_index_consensus.append(jti)
     jump_time_index_consensus= np.array(jump_time_index_consensus)
-    whether_all_chain_has_jump_ma = np.array(whether_all_chain_has_jump_ma)
+    whether_consensus_ma = np.array(whether_consensus_ma)
 
-    frac_consensus = whether_all_chain_has_jump_ma.mean()
+    frac_consensus = whether_consensus_ma.mean()
 
-    return frac_consensus,jump_time_index_consensus,whether_all_chain_has_jump_ma
+    return frac_consensus,jump_time_index_consensus,whether_consensus_ma
