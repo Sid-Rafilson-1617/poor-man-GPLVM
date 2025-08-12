@@ -246,7 +246,7 @@ def get_jump_consensus(jump_p,jump_p_all_chain,window_size=5,jump_p_thresh = 0.4
     then check if the jumps are consistent across chains, i.e. a jump occurs within a window in most other chains ( > consensus_thresh)
 
     frac_consensus: fraction of jumps that are consistent across chains
-    is_jump_consensus: whether the jump is consistent across chains, n_time
+    is_jump_filtered: whether the jump is consistent across chains, n_time
     whether_consensus_ma: whether the jump is consistent across chains, n_time
     '''
 
@@ -266,7 +266,7 @@ def get_jump_consensus(jump_p,jump_p_all_chain,window_size=5,jump_p_thresh = 0.4
 
     frac_consensus = whether_consensus_ma.mean()
 
-    is_jump_consensus = np.zeros(len(jump_p))
-    is_jump_consensus[jump_time_index_consensus] = 1
+    is_jump_filtered = np.zeros(len(jump_p))
+    is_jump_filtered[jump_time_index_consensus] = 1
 
-    return frac_consensus,is_jump_consensus,whether_consensus_ma
+    return frac_consensus,is_jump_filtered,whether_consensus_ma
