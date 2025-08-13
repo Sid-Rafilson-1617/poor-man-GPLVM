@@ -44,5 +44,5 @@ def plot_mean_error_plot(data,error_type='ci',mean_axis=0,fig=None,ax=None,**kwa
         xs = mean.index
     else:
         xs = np.arange(len(mean))
-    ax.fill_between(xs,mean-error,mean+error,alpha=0.5)
+    ax.fill_between(xs,mean-error,mean+error,alpha=0.5,**kwargs)
     return fig,ax
