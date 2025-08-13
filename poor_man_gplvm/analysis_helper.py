@@ -45,6 +45,8 @@ def get_peri_event_with_shuffle(feature_tsd,event_ts,n_shuffle=100,minmax=4,do_z
 
     peri_event = nap.compute_perievent_continuous(timeseries=feature_tsd,tref=event_ts,minmax=minmax) # n_time x n_event
     peri_event = peri_event.as_dataframe().T # n_event x n_time
+    if do_zscore:
+        peri_event = scipy.stats.zscore(peri_event,axis=1)
 
     peri_event_sh_l=[]
     if n_shuffle > 0:
