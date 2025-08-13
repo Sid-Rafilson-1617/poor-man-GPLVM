@@ -89,7 +89,7 @@ def get_consecutive_pv_distance(X, metric="cosine"):
     """
     if isinstance(X,nap.TsdFrame):
         is_pyanppe=True
-        X_ = X.data
+        X_ = X.d
     else:
         is_pyanppe=False
         X_ = X
