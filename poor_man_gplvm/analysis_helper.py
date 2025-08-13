@@ -5,6 +5,7 @@ import numpy as np
 import pynapple as nap
 import pandas as pd
 import scipy.stats
+import tqdm
 
 def get_state_interval(p_l,p_thresh=0.8, merge_thresh=1,duration_thresh=2,):
     '''
@@ -47,7 +48,7 @@ def get_peri_event_with_shuffle(feature_tsd,event_ts,n_shuffle=100,minmax=4,do_z
 
     peri_event_sh_l=[]
     if n_shuffle > 0:
-        for i in range(n_shuffle):
+        for i in tqdm.trange(n_shuffle):
             event_ts_sh=nap.shift_timestamps(event_ts)
             event_ts_sh = event_ts_sh[(event_ts_sh.t>minmax) & (event_ts_sh.t<feature_tsd.t[-1]-minmax)]
             peri_event_sh=nap.compute_perievent_continuous(timeseries=feature_tsd,tref=event_ts_sh,minmax=minmax) # n_time x n_event
