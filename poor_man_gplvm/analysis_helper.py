@@ -94,13 +94,13 @@ def get_consecutive_pv_distance(X, smooth_window=None,metric="cosine"):
         is_pyanppe=True
         if smooth_window is not None:
             X = X.smooth(smooth_window)
-        X_ = X.d
+        X_ = X.d.astype(float)
         
 
     else:
         is_pyanppe=False
         if smooth_window is not None:
-            X = scipy.ndimage.gaussian_filter1d(X,smooth_window)
+            X = scipy.ndimage.gaussian_filter1d(X.astype(float),smooth_window)
         X_ = X
     x1, x2 = X_[:-1], X_[1:]
 
