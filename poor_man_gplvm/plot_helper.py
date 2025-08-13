@@ -78,7 +78,8 @@ def plot_pynapple_data_plotly(
     title_top_margin=70,         # extra top space so titles never clip
     annotation_yshift=8,         # lift subplot titles a bit (pixels)
     shared_vlines: list[float] | None = None,  # x positions
-    showlegend=False
+    showlegend=False,
+    font_size=12,
 ):
     """
     Plot dict of pynapple objects 
@@ -210,7 +211,8 @@ def plot_pynapple_data_plotly(
         width=width,
         height=fig_height,
         showlegend=showlegend,
-        margin=dict(t=title_top_margin, r=10, b=10, l=10)
+        margin=dict(t=title_top_margin, r=10, b=10, l=10),
+        font=dict(size=font_size)
     )
     # lift subplot titles slightly so they never collide with plots
     fig.for_each_annotation(lambda a: a.update(yshift=annotation_yshift))
