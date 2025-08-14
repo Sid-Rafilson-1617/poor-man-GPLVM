@@ -310,7 +310,7 @@ def plot_pynapple_data_plotly(
 # 3) Show as non-interactive in notebook:
 # fig.show(config={"staticPlot": True})
 
-def add_vertical_shades(fig,intvl_l,ep=None,*,exclude=None,fillcolor="red",opacity=0.1,line_width=0,line_dash=None,layer="above",**vrect_kwargs):
+def add_vertical_shades(fig,intvl_l,ep=None,*,exclude=None,fillcolor="red",opacity=0.25,line_width=0,line_dash=None,layer="above",**vrect_kwargs):
     '''
     shade the intervals in the figure
 
@@ -346,8 +346,8 @@ def add_vertical_shades(fig,intvl_l,ep=None,*,exclude=None,fillcolor="red",opaci
                 if (i, j) in exclude_set:
                     continue
                 args = dict(
-                    x0=intv['start'],
-                    x1=intv['end'],
+                    x0=intv['start'][0],
+                    x1=intv['end'][0],
                     row=i,
                     col=j,
                     fillcolor=fillcolor,
