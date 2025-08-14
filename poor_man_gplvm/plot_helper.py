@@ -310,7 +310,7 @@ def plot_pynapple_data_plotly(
 # 3) Show as non-interactive in notebook:
 # fig.show(config={"staticPlot": True})
 
-def add_verticle_shades(fig,intvl_l,ep=None,*,exclude=None,fillcolor="red",opacity=0.1,line_width=0,line_dash=None,layer="above",**vrect_kwargs):
+def add_vertial_shades(fig,intvl_l,ep=None,*,exclude=None,fillcolor="red",opacity=0.1,line_width=0,line_dash=None,layer="above",**vrect_kwargs):
     '''
     shade the intervals in the figure
 
@@ -319,7 +319,6 @@ def add_verticle_shades(fig,intvl_l,ep=None,*,exclude=None,fillcolor="red",opaci
     ep: nap.IntervalSet, with one row, to restrict the intvl_l
 
     exclude: iterable of (row, col) pairs (1-based) specifying subplot coordinates to NOT shade
-    rows, cols: override grid shape if it cannot be inferred from the figure
     fillcolor, opacity, line_width, line_dash, layer: styling controls for the shaded rectangles
     Additional keyword arguments are passed through to fig.add_vrect
     '''
