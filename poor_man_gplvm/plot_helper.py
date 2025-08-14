@@ -97,6 +97,7 @@ def plot_pynapple_data_plotly(
     y_nticks: int | None = None, # or dict: {key: int}
     tickformat: str | None = None,   # e.g. '%H:%M:%S' for time axes
     y_lim_quantile: tuple[float, float] | dict[str, tuple[float, float] | None] | None = (0.01, 0.99),
+    y_lim: tuple[float, float] | dict[str, tuple[float, float] | None] | None = None, # only effective if y_lim_quantile is not None / not provided
     ylabel: str | dict[str, str] | None = None,
     xlabel: str | dict[str, str] | None = None,
     tickvals: list[float] | int | dict[str, list[float] | int | None] | None = None,
@@ -215,9 +216,26 @@ def plot_pynapple_data_plotly(
                 fig.update_yaxes(range=[ymin, ymax], row=i, col=1)
                 y_min_used, y_max_used = ymin, ymax
             else:
-                # no override -> fall back to raw data extent for tick computations
-                y_min_used = float(np.nanmin(y))
-                y_max_used = float(np.nanmax(y))
+                # Try explicit y_lim next
+                lim_cfg = y_lim
+                if isinstance(y_lim, dict):
+                    lim_cfg = y_lim.get(k, None)
+                if lim_cfg is not None:
+                    ymin, ymax = lim_cfg
+                    # validate
+                    if not (np.isfinite(ymin) and np.isfinite(ymax)) or ymin == ymax:
+                        ymin = float(np.nanmin(y))
+                        ymax = float(np.nanmax(y))
+                        if ymin == ymax:
+                            eps = 1e-6 if ymin == 0 else abs(ymin) * 1e-6
+                            ymin -= eps
+                            ymax += eps
+                    fig.update_yaxes(range=[float(ymin), float(ymax)], row=i, col=1)
+                    y_min_used, y_max_used = float(ymin), float(ymax)
+                else:
+                    # no override -> fall back to raw data extent for tick computations
+                    y_min_used = float(np.nanmin(y))
+                    y_max_used = float(np.nanmax(y))
 
         # ticks: global int OR per-key dict
         if isinstance(x_nticks, dict):
