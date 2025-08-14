@@ -310,6 +310,59 @@ def plot_pynapple_data_plotly(
 # 3) Show as non-interactive in notebook:
 # fig.show(config={"staticPlot": True})
 
+def add_verticle_shades(fig,intvl_l,ep=None,*,exclude=None,fillcolor="red",opacity=0.1,line_width=0,line_dash=None,layer="above",**vrect_kwargs):
+    '''
+    shade the intervals in the figure
+
+    fig: plotly figure
+    intvl_l: nap.IntervalSet, the intervals to be shaded
+    ep: nap.IntervalSet, with one row, to restrict the intvl_l
+
+    exclude: iterable of (row, col) pairs (1-based) specifying subplot coordinates to NOT shade
+    rows, cols: override grid shape if it cannot be inferred from the figure
+    fillcolor, opacity, line_width, line_dash, layer: styling controls for the shaded rectangles
+    Additional keyword arguments are passed through to fig.add_vrect
+    '''
+
+    # restrict intervals to epoch if provided
+    if ep is None:
+        intvl_l_sub = intvl_l
+    else:
+        ma = (intvl_l['start'] >= ep['start'][0]) & (intvl_l['end'] <= ep['end'][0])
+        intvl_l_sub = intvl_l[ma]
+
+    # infer subplot grid shape
+    row_l,col_l = fig._get_subplot_rows_columns() # ranges
+    
+
+    # normalize exclude list into a set of tuples
+    exclude_set = set()
+    if exclude is not None:
+        exclude_set = { (int(rc[0]), int(rc[1])) for rc in exclude }
+
+    # draw a vrect per interval on subplots not in exclude_set
+    for intv in intvl_l_sub:
+        for i in row_l:
+            for j in col_l:
+                if (i, j) in exclude_set:
+                    continue
+                args = dict(
+                    x0=intv['start'],
+                    x1=intv['end'],
+                    row=i,
+                    col=j,
+                    fillcolor=fillcolor,
+                    opacity=opacity,
+                    line_width=line_width,
+                    layer=layer,
+                )
+                if line_dash is not None:
+                    args['line_dash'] = line_dash
+                args.update(vrect_kwargs)
+                fig.add_vrect(**args)
+    return fig
+
+
 import plotly.graph_objects as go
 
 def set_plotly_fonts(fig,
