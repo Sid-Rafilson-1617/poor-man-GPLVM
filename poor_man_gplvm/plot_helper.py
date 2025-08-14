@@ -18,6 +18,9 @@ def save_fig(fig,fig_name,fig_dir='./figs',fig_format=['png','svg'],dpi=300):
     '''
     save figure to fig_dir
     '''
+    # clean fig_name to avoid special characters
+    fig_name = fig_name.replace(' ','_')
+    fig_name = fig_name.replace('.','__')
     if not os.path.exists(fig_dir):
         os.makedirs(fig_dir)
     for fmt in fig_format:
