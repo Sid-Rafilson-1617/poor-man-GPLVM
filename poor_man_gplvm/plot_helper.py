@@ -28,14 +28,20 @@ def save_fig(fig,fig_name,fig_dir='./figs',fig_format=['png','svg'],dpi=300):
         print(f'saved {fig_name}.{fmt} to {fig_dir}')
     plt.close(fig)
 
-def save_fig_plotly(fig,fig_name,fig_dir='./figs',fig_format=['png','svg'],scale=2):
+def save_fig_plotly(fig,fig_name,fig_dir='./figs',fig_format=['png','svg'],scale_png=10,scale_svg=0.4):
     '''
     save figure to fig_dir
     '''
+    fig_name = fig_name.replace(' ','_')
+    fig_name = fig_name.replace('.','__')
     if not os.path.exists(fig_dir):
         os.makedirs(fig_dir)
     for fmt in fig_format:
-        fig.write_image(os.path.join(fig_dir,fig_name+f'.{fmt}'),scale=scale)
+        if fmt =='html':
+            fig.write_html(os.path.join(fig_dir,fig_name+f'.{fmt}'),include_mathjax='cdn')
+        else:
+            scale = scale_png if fmt == 'png' else scale_svg    
+            fig.write_image(os.path.join(fig_dir,fig_name+f'.{fmt}'),scale=scale)
         print(f'saved {fig_name}.{fmt} to {fig_dir}')
     return fig
 
