@@ -75,6 +75,7 @@ def plot_pynapple_data_plotly(
     x_nticks: int | None = None, # or dict: {key: int}
     y_nticks: int | None = None, # or dict: {key: int}
     tickformat: str | None = None,   # e.g. '%H:%M:%S' for time axes
+    y_lim_quantile: tuple[float, float] | dict[str, tuple[float, float] | None] | None = (0.01, 0.99),
     title_top_margin=70,         # extra top space so titles never clip
     annotation_yshift=8,         # lift subplot titles a bit (pixels)
     shared_vlines: list[float] | None = None,  # x positions
@@ -167,14 +168,23 @@ def plot_pynapple_data_plotly(
         arr = data[k]
         if arr.d.size and arr.d.ndim == 1:
             y = arr.d
-            mu, sd = float(np.nanmean(y)), float(np.nanstd(y))
-            if np.isfinite(sd) and sd > 0:
-                z = (y - mu) / sd
-                filt = y[np.abs(z) <= 3.0]
-                ymin, ymax = (np.min(filt), np.max(filt)) if filt.size else (np.min(y), np.max(y))
-            else:
-                ymin, ymax = float(np.nanmin(y)), float(np.nanmax(y))
-            fig.update_yaxes(range=[ymin, ymax], row=i, col=1)
+            # Determine quantile config for this subplot
+            q_cfg = y_lim_quantile
+            if isinstance(y_lim_quantile, dict):
+                q_cfg = y_lim_quantile.get(k, (0.01, 0.99))
+            if q_cfg is not None:
+                q_low, q_high = q_cfg
+                ymin = float(np.nanquantile(y, q_low))
+                ymax = float(np.nanquantile(y, q_high))
+                if not np.isfinite(ymin) or not np.isfinite(ymax) or ymin == ymax:
+                    ymin = float(np.nanmin(y))
+                    ymax = float(np.nanmax(y))
+                    if ymin == ymax:
+                        eps = 1e-6 if ymin == 0 else abs(ymin) * 1e-6
+                        ymin -= eps
+                        ymax += eps
+                fig.update_yaxes(range=[ymin, ymax], row=i, col=1)
+            # else: None -> do not override; keep default auto y-limits
 
         # ticks: global int OR per-key dict
         if isinstance(x_nticks, dict):
