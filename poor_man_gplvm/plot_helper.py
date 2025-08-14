@@ -28,6 +28,17 @@ def save_fig(fig,fig_name,fig_dir='./figs',fig_format=['png','svg'],dpi=300):
         print(f'saved {fig_name}.{fmt} to {fig_dir}')
     plt.close(fig)
 
+def save_fig_plotly(fig,fig_name,fig_dir='./figs',fig_format=['png','svg'],scale=2):
+    '''
+    save figure to fig_dir
+    '''
+    if not os.path.exists(fig_dir):
+        os.makedirs(fig_dir)
+    for fmt in fig_format:
+        fig.write_image(os.path.join(fig_dir,fig_name+f'.{fmt}'),scale=scale)
+        print(f'saved {fig_name}.{fmt} to {fig_dir}')
+    return fig
+
 def plot_mean_error_plot(data,error_type='ci',mean_axis=0,fig=None,ax=None,**kwargs):
     '''
     plt the mean and error of the data
