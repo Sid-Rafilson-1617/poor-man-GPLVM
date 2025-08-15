@@ -173,8 +173,10 @@ def distance_vs_label_regression(
             "label_i": labels[i_orig], "label_j": labels[j_orig],
             "label_dist": x, "dist": y
         })
+    
+    res = dict(pairs_df=pairs_df, summary=summary, binned=binned, edges=edges, kept_idx=kept_idx)
 
-    return pairs_df, summary, binned, edges, kept_idx
+    return res
 
 def shuffle_test_distance_vs_label(
     D, labels, *, n_shuffles=1000, rng=None, bin_edges=None, nbins=50, binning='uniform'
