@@ -28,6 +28,20 @@ def get_state_interval(p_l,p_thresh=0.8, merge_thresh=1,duration_thresh=2,):
     intv_merge = intv_merge[ma]
     return intv_merge
 
+def shift_timestamp(ts,time_support=None):
+    '''
+    shift the timestamp of a nap.Ts
+    wrap around the time support
+    '''
+    if time_support is None:
+        time_support = [ts.t[0],ts.t[-1]]
+    shift = np.random.uniform(time_support[0],time_support[1])
+    ts_shift = ts.t + shift
+    ts_shift[ts_shift<time_support[0]] = ts_shift[ts_shift<time_support[0]]-time_support[0]+time_support[1]
+    ts_shift[ts_shift>time_support[1]] = ts_shift[ts_shift>time_support[1]]-time_support[1]+time_support[0]
+    ts_shift=nap.Ts(t=ts_shift)
+    return ts_shift
+
 def get_peri_event_with_shuffle(feature_tsd,event_ts,n_shuffle=100,minmax=4,do_zscore=True):
     '''
     get peri event signal
@@ -52,7 +66,7 @@ def get_peri_event_with_shuffle(feature_tsd,event_ts,n_shuffle=100,minmax=4,do_z
     peri_event_sh_l=[]
     if n_shuffle > 0:
         for i in tqdm.trange(n_shuffle):
-            event_ts_sh=nap.shift_timestamps(event_ts)
+            event_ts_sh=shift_timestamp(event_ts,time_support=[feature_tsd.t[0],feature_tsd.t[-1]])
             try:
                 event_ts_sh = event_ts_sh[(event_ts_sh.t>minmax) & (event_ts_sh.t<event_ts_sh.t[-1]-minmax)]
             except:
