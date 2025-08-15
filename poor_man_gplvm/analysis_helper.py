@@ -53,7 +53,7 @@ def get_peri_event_with_shuffle(feature_tsd,event_ts,n_shuffle=100,minmax=4,do_z
     if n_shuffle > 0:
         for i in tqdm.trange(n_shuffle):
             event_ts_sh=nap.shift_timestamps(event_ts)
-            event_ts_sh = event_ts_sh[(event_ts_sh.t>minmax) & (event_ts_sh.t<feature_tsd.t[-1]-minmax)]
+            event_ts_sh = event_ts_sh[(event_ts_sh.t>minmax) & (event_ts_sh.t<event_ts_sh.t[-1]-minmax)]
             peri_event_sh=nap.compute_perievent_continuous(timeseries=feature_tsd,tref=event_ts_sh,minmax=minmax) # n_time x n_event
             peri_event_sh = peri_event_sh.as_dataframe().T # n_event x n_time
             if do_zscore:
