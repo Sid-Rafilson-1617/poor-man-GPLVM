@@ -7,6 +7,7 @@ import pandas as pd
 
 import numpy as np
 from scipy.spatial.distance import cdist
+import statsmodels.api as sm
 
 def w1_cdf_distance_matrix(prob_mat, bin_edges=None, normalize=False):
     """
@@ -143,47 +144,141 @@ def _linregress_np(x, y):
     r = np.corrcoef(x, y)[0,1]
     return dict(intercept=intercept, slope=slope, r=r, r2=r**2)
 
+def _residualize_on_time(y, t):
+    """
+    Residualize y by removing a linear effect of t: y_resid = y - (a + b*t).
+    Returns (y_resid, model_dict(intercept=a, slope=b)). If t has zero variance,
+    uses slope=0 and intercept=mean(y).
+    """
+    y = np.asarray(y, float)
+    t = np.asarray(t, float)
+    if y.size == 0:
+        return y, dict(intercept=np.nan, slope=np.nan)
+    tm = np.mean(t)
+    ym = np.mean(y)
+    vt = np.sum((t - tm)**2)
+    if vt == 0 or not np.isfinite(vt):
+        a = ym
+        b = 0.0
+    else:
+        b = np.sum((t - tm) * (y - ym)) / vt
+        a = ym - b * tm
+    resid = y - (a + b * t)
+    return resid, dict(intercept=a, slope=b)
+
 def distance_vs_label_regression(
-    D, labels, *, bin_edges=None, nbins=50, binning='uniform', z=1.96, return_pairs_df=True
+    D, labels, *, bin_edges=None, nbins=50, binning='uniform', z=1.96, return_pairs_df=True,
+    timestamps=None, label_distance_threshold=None
 ):
     """
-    Build the upper-triangle dataset (distance vs |Δlabel|), run OLS,
-    and compute binned mean/std/CI vs label distance.
+    Build the upper-triangle dataset (distance vs |Δlabel|), run OLS, and compute
+    binned mean/std/CI vs label distance. Optionally include time as an additional
+    regressor using pairwise |Δtime|.
 
-    Returns:
-      pairs_df : DataFrame (i,j, label_i, label_j, label_dist, dist) [optional]
-      summary  : dict(intercept, slope, r, r2)
-      binned   : DataFrame (bin_left, bin_right, bin_center, n, mean, std, ci_low, ci_high)
-      bin_edges: ndarray used (reusable for shuffles)
-      kept_idx : indices kept after dropping NaN labels (map to D submatrix)
+    Parameters
+    ----------
+    D : (n,n) square array
+    labels : (n,) array_like
+    bin_edges, nbins, binning, z : see _bin_stats
+    return_pairs_df : if True, return the pairs dataframe
+    timestamps : (n,) array_like or None
+        If provided, include pairwise |Δtime| as an additional regressor.
+    label_distance_threshold : float or None
+        If provided, replace continuous |Δlabel| with a binary variable:
+        1 if |Δlabel| <= threshold else 0. If threshold==0, this enforces strict
+        sameness as the positive category.
+
+    Returns
+    -------
+    dict with keys: pairs_df, summary, binned, edges, kept_idx
+      - summary: dict(intercept, slope, r, r2), where slope is the coefficient
+        for the label regressor; r is NaN when multiple regressors are used.
     """
-    Dv, lv, iu, ju, x, y, i_orig, j_orig, kept_idx = _upper_triangle_pairs(D, labels)
+    Dv, lv, iu, ju, x_cont, y, i_orig, j_orig, kept_idx = _upper_triangle_pairs(D, labels)
 
-    # Regression
-    summary = _linregress_np(x, y)
+    # Optional time differences
+    if timestamps is not None:
+        tv = np.asarray(timestamps, float)[kept_idx]
+        t_pairs = np.abs(tv[ju] - tv[iu])
+    else:
+        t_pairs = None
 
-    # Binned stats
-    binned, edges = _bin_stats(x, y, bin_edges=bin_edges, nbins=nbins, binning=binning, z=z)
+    # Choose regressor: continuous |Δlabel| or binary category
+    if label_distance_threshold is not None:
+        thr = float(label_distance_threshold)
+        x = (x_cont <= thr).astype(float)
+        edges_eff = np.array([-0.5, 0.5, 1.5])
+    else:
+        x = x_cont
+        edges_eff = bin_edges
 
-    # Pairwise DF (upper triangle only)
+    # Build regression design (const, label, [time]) with NaN-safe mask
+    cols = {"label": x}
+    if t_pairs is not None:
+        cols["time"] = t_pairs
+    X = np.column_stack([cols[c] for c in cols])
+    X = sm.add_constant(X, has_constant='add')
+
+    # Create mask of finite rows
+    mask = np.isfinite(y)
+    for arr in cols.values():
+        mask &= np.isfinite(arr)
+
+    y_use = y[mask]
+    X_use = X[mask]
+
+    # Fit OLS
+    model = sm.OLS(y_use, X_use)
+    result = model.fit()
+
+    # Extract coefficients
+    params = result.params
+    intercept = params[0]
+    slope_label = params[1] if "label" in cols else np.nan
+    r2 = float(result.rsquared)
+    # r is undefined for multi-regressor; keep for 1D case
+    if t_pairs is None:
+        r = np.sign(slope_label) * np.sqrt(r2)
+    else:
+        r = np.nan
+
+    summary = dict(intercept=intercept, slope=slope_label, r=r, r2=r2)
+
+    # Binned stats using the masked data
+    x_for_bins = x[mask]
+    binned, edges_used = _bin_stats(x_for_bins, y_use, bin_edges=edges_eff, nbins=nbins, binning=binning, z=z)
+
     pairs_df = None
     if return_pairs_df:
-        pairs_df = pd.DataFrame({
-            "i": i_orig, "j": j_orig,
-            "label_i": labels[i_orig], "label_j": labels[j_orig],
-            "label_dist": x, "dist": y
-        })
-    
-    res = dict(pairs_df=pairs_df, summary=summary, binned=binned, edges=edges, kept_idx=kept_idx)
+        i_use = i_orig[mask]; j_use = j_orig[mask]
+        pairs_data = {
+            "i": i_use, "j": j_use,
+            "label_i": labels[i_use], "label_j": labels[j_use],
+            "label_dist": x_cont[mask],
+            "dist": y_use,
+        }
+        if t_pairs is not None:
+            pairs_data["time_dist"] = t_pairs[mask]
+        if label_distance_threshold is not None:
+            pairs_data["label_dist_bin"] = x_for_bins
+        pairs_df = pd.DataFrame(pairs_data)
+
+    res = dict(pairs_df=pairs_df, summary=summary, binned=binned, edges=edges_used, kept_idx=kept_idx)
 
     return res
 
 def shuffle_test_distance_vs_label(
-    D, labels, *, n_shuffles=1000, rng=None, bin_edges=None, nbins=50, binning='uniform'
+    D, labels, *, n_shuffles=1000, rng=None, bin_edges=None, nbins=50, binning='uniform',
+    timestamps=None, label_distance_threshold=None
 ):
     """
     Shuffle test: randomly permute rows/cols of D (labels stay put),
     then recompute regression and binned means each time.
+
+    If timestamps are provided, include pairwise |Δtime| as an additional regressor.
+
+    If label_distance_threshold is provided, regress on the binary category
+    1[|Δlabel| <= threshold]; binning is fixed to two bins.
 
     Returns:
       results dict with:
@@ -196,16 +291,45 @@ def shuffle_test_distance_vs_label(
         bin_edges : ndarray used
     """
     rng = np.random.default_rng(rng)
-    # Build once (obs)
+    # Observed using the same API to get edges and mask semantics
     obs = distance_vs_label_regression(
-        D, labels, bin_edges=bin_edges, nbins=nbins, binning=binning, return_pairs_df=False
+        D, labels, bin_edges=bin_edges, nbins=nbins, binning=binning, return_pairs_df=False,
+        timestamps=timestamps, label_distance_threshold=label_distance_threshold
     )
     summary_obs = obs['summary']
     binned_obs = obs['binned']
     edges = obs['edges']
     kept_idx = obs['kept_idx']
-    # Reuse kept submatrix and upper-tri indices
-    Dv, lv, iu, ju, x, y, *_ = _upper_triangle_pairs(D, labels)  # recompute to get iu,ju,x
+
+    # Build design on the full (kept) upper-triangle pairs (mask later like observed)
+    Dv, lv, iu, ju, x_cont, y, *_ = _upper_triangle_pairs(D, labels)
+
+    # Optional time differences
+    if timestamps is not None:
+        tv = np.asarray(timestamps, float)[kept_idx]
+        t_pairs = np.abs(tv[ju] - tv[iu])
+    else:
+        t_pairs = None
+
+    # Label regressor
+    if label_distance_threshold is not None:
+        thr = float(label_distance_threshold)
+        x_reg = (x_cont <= thr).astype(float)
+    else:
+        x_reg = x_cont
+
+    # Build mask to emulate observed filtering: finite y, finite x, finite time if used
+    mask = np.isfinite(y) & np.isfinite(x_reg)
+    if t_pairs is not None:
+        mask &= np.isfinite(t_pairs)
+
+    # Pre-compute design matrix for masked rows
+    cols = {"label": x_reg[mask]}
+    if t_pairs is not None:
+        cols["time"] = t_pairs[mask]
+    X = np.column_stack([cols[c] for c in cols])
+    X = sm.add_constant(X, has_constant='add')
+
     nb = len(edges) - 1
     slopes = np.empty(n_shuffles); intercepts = np.empty(n_shuffles); r2s = np.empty(n_shuffles)
     binned_means = np.full((n_shuffles, nb), np.nan)
@@ -213,13 +337,18 @@ def shuffle_test_distance_vs_label(
     n = Dv.shape[0]
     for s in range(n_shuffles):
         perm = rng.permutation(n)
-        Dp = Dv[np.ix_(perm, perm)]
-        y_shuf = Dp[iu, ju]
-        # regression
-        reg = _linregress_np(x, y_shuf)
-        slopes[s] = reg['slope']; intercepts[s] = reg['intercept']; r2s[s] = reg['r2']
-        # binned means on fixed edges
-        binned_s, _ = _bin_stats(x, y_shuf, bin_edges=edges)
+        # Sample shuffled upper-triangle distances without materializing Dp
+        y_all = Dv[perm[iu], perm[ju]]
+        y_use = y_all[mask]
+        # Fit OLS against fixed design
+        model = sm.OLS(y_use, X)
+        result = model.fit()
+        params = result.params
+        intercepts[s] = params[0]
+        slopes[s] = params[1] if X.shape[1] >= 2 else np.nan
+        r2s[s] = float(result.rsquared)
+        # Binned means on fixed edges
+        binned_s, _ = _bin_stats(cols["label"], y_use, bin_edges=edges)
         binned_means[s, :] = binned_s['mean'].to_numpy()
 
     # empirical two-sided p for slope
@@ -245,3 +374,4 @@ def shuffle_test_distance_vs_label(
         binned_hi_shuf=hi,
         bin_edges=edges
     )
+
