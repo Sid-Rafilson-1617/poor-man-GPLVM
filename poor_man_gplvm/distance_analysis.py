@@ -197,9 +197,13 @@ def shuffle_test_distance_vs_label(
     """
     rng = np.random.default_rng(rng)
     # Build once (obs)
-    pairs_df, summary_obs, binned_obs, edges, kept_idx = distance_vs_label_regression(
+    obs = distance_vs_label_regression(
         D, labels, bin_edges=bin_edges, nbins=nbins, binning=binning, return_pairs_df=False
     )
+    summary_obs = obs['summary']
+    binned_obs = obs['binned']
+    edges = obs['edges']
+    kept_idx = obs['kept_idx']
     # Reuse kept submatrix and upper-tri indices
     Dv, lv, iu, ju, x, y, *_ = _upper_triangle_pairs(D, labels)  # recompute to get iu,ju,x
     nb = len(edges) - 1
