@@ -450,3 +450,12 @@ def set_plotly_fonts(fig,
     fig.update_layout(hoverlabel=dict(font=dict(size=hover)))
 
     return fig
+
+# for small plots, only keep two ticks 
+def set_two_ticks(axis, ylim=None,do_int=True):
+    if ylim is None:
+        ylim = axis.get_ylim()
+    if do_int:
+        ylim = [int(k) for k in ylim]
+    axis.set_yticks([ylim[0], ylim[1]])
+    return axis
