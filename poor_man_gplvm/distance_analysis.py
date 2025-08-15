@@ -5,6 +5,57 @@ analysis of distance
 import numpy as np
 import pandas as pd
 
+import numpy as np
+from scipy.spatial.distance import cdist
+
+def w1_cdf_distance_matrix(prob_mat, bin_edges=None, normalize=False):
+    """
+    Compute the 1D Wasserstein-1 (Earth Mover's) distance matrix between rows
+    of a probability matrix using the CDF trick.
+
+    Parameters
+    ----------
+    prob_mat : (n_time, n_feat) array_like
+        Each row is a discrete distribution over ordered bins (histogram).
+    bin_edges : (n_feat+1,) array_like or None
+        Bin edges along the ordered axis. If None, bins are assumed equally spaced
+        with width=1. For non-uniform bins, supply edges so widths = np.diff(bin_edges).
+    normalize : bool
+        If True, renormalize each row to sum to 1 (safe if inputs are counts).
+
+    Returns
+    -------
+    D : (n_time, n_time) ndarray
+        Pairwise W1 distances.
+    C : (n_time, n_feat) ndarray
+        Row-wise CDFs used for the computation.
+    """
+    P = np.asarray(prob_mat, dtype=float)
+    if normalize:
+        row_sums = P.sum(axis=1, keepdims=True)
+        row_sums[row_sums == 0.0] = 1.0
+        P = np.clip(P, 0.0, None) / row_sums
+
+    # Row-wise CDFs at bin ends (right-closed bins)
+    C = np.cumsum(P, axis=1)
+
+    # Bin widths (weights for integrating |F_p - F_q| over x)
+    if bin_edges is None:
+        w = np.ones(P.shape[1], dtype=float)  # equal-width bins (Δx = 1)
+    else:
+        edges = np.asarray(bin_edges, dtype=float)
+        if edges.ndim != 1 or edges.size != P.shape[1] + 1:
+            raise ValueError("bin_edges must have shape (n_feat+1,)")
+        w = np.diff(edges)  # positive widths
+
+    # Weighted L1 distance between CDF rows:
+    # W1(p,q) = sum_i w_i * |C_p[i] - C_q[i]|
+    # Implemented by scaling features then using cityblock.
+    Cw = C * w[None, :]
+    D = cdist(Cw, Cw, metric='cityblock')
+    return D, C
+
+
 def _upper_triangle_pairs(D, labels):
     """Return upper-tri pairs after dropping NaN labels."""
     D = np.asarray(D, dtype=float)
