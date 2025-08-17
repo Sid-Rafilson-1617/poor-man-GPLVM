@@ -199,6 +199,6 @@ def segregate_event_ts_by_sleep_state(event_ts,sleep_state_label_d):
     event_ts_d = {}
     for label,intv in sleep_state_label_d.items():
         event_ts_d[label] = event_ts.restrict(intv)
-    return event_ts_d,sleep_state_label_d
+    return event_ts_d
 
 # def prep_event_ts_d(prep_res):
