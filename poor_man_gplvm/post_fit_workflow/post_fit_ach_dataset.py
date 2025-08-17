@@ -56,7 +56,7 @@ def load_data_and_fit_res(data_path,fit_res_path):
 
     return prep_res
 
-def find_ach_ramp_onset(ach_data,smooth_win=1,height=0.3,do_zscore=True,detrend_cutoff=None):
+def find_ach_ramp_onset(ach_data,smooth_win=1,height=0.05,do_zscore=True,detrend_cutoff=None):
     '''
     detrend_cutoff: float, optional, usually 0.01
     '''
@@ -142,6 +142,7 @@ def event_triggered_analysis(feature,event_ts,n_shuffle=10,minmax=4,do_zscore=Fa
 
     return analysis_res
 
+##### main analysis #####
 def event_triggered_analysis_multiple_feature_event(feature_d,event_ts_d,n_shuffle=10,minmax=4,do_zscore=False,test_win=1,do_plot=False,fig=None,ax=None):
     '''
     wrapper of event_triggered_analysis for multiple features and events
