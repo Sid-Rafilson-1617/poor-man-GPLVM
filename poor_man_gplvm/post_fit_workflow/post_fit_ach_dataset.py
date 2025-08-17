@@ -27,6 +27,7 @@ import dill
 import poor_man_gplvm.analysis_helper as ah
 import poor_man_gplvm.plot_helper as ph
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 # helper function to get list of processed decoding result from em_res_l (multiple em fit results)
 def get_decode_res_l_from_em_res_l(em_res_l,t_l=None):
@@ -147,6 +148,10 @@ def event_triggered_analysis(feature,event_ts,n_shuffle=10,minmax=4,do_zscore=Fa
             ax.set_title(title)
         if ylim is not None:
             ax.set_ylim(ylim)
+        ax=ph.set_two_ticks(ax,apply_to='y')
+        ax=ph.set_symmetric_ticks(ax,apply_to='x')
+        sns.despine(ax=ax)
+
         return analysis_res,fig,ax
 
     return analysis_res
@@ -178,8 +183,6 @@ def event_triggered_analysis_multiple_feature_event(feature_d,event_ts_d,n_shuff
                 analysis_res = event_triggered_analysis(feat,event_ts,n_shuffle=n_shuffle,minmax=minmax,do_zscore=do_zscore,test_win=test_win)
             analysis_res_d[feat_name,event_name] = analysis_res
             if do_plot:
-                ax_=ph.set_two_ticks(ax_,apply_to='y')
-                ax_=ph.set_symmetric_ticks(ax_,apply_to='x')
                 fig_d[feat_name,event_name] = fig_
                 ax_d[feat_name,event_name] = ax_
     if do_plot:
