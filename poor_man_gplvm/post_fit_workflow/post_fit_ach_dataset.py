@@ -24,7 +24,8 @@ import numpy as np
 import scipy
 import pynapple as nap
 import dill
-
+import poor_man_gplvm.analysis_helper as ah
+import poor_man_gplvm.plot_helper as ph
 
 # helper function to get list of processed decoding result from em_res_l (multiple em fit results)
 def get_decode_res_l_from_em_res_l(em_res_l,t_l=None):
@@ -77,3 +78,66 @@ def find_ach_ramp_onset(ach_data,smooth_win=1,height=0.3,do_zscore=True,detrend_
     ach_ramp_onset = nap.Ts(slope.t[peaks])
     ach_ramp_onset_res = {'ach_ramp_onset':ach_ramp_onset,'slope':slope,'ach_data_smth':ach_data_smth,'ach_data':ach_data,'peak_heights':peak_heights}
     return ach_ramp_onset_res
+
+def event_triggered_analysis(feature,event_ts,n_shuffle=10,minmax=4,do_zscore=False,test_win=1,do_plot=False,fig=None,ax=None):
+    '''
+    do event triggered analysis on a feature, as well as circularly shuffle the events to get null
+    for test statistics, get the pre post difference, correlation with time within pre/post, regression analysis with time_within and C(is_post)
+    optionally plot
+    feature: Tsd, the feature to be analyzed
+    event_ts: Ts, the event timestamps
+    n_shuffle: int, number of shuffles
+    do_zscore: bool, whether to zscore the feature within each peri-event window
+    minmax: [-minmax,minmax] will be the peri event window, in second
+    test_win: in second, a smaller window to do the pre post difference test
+    '''
+    peri_event_res=ah.get_peri_event_with_shuffle(feature,event_ts,n_shuffle=n_shuffle,minmax=minmax,do_zscore=do_zscore)
+    ach_peri,ach_peri_shuffle = peri_event_res
+    analysis_res={'feature':ach_peri,'shuffle':ach_peri_shuffle}
+
+    # wilcoxon test
+    toplot = toplot_z = ach_peri
+    pre=toplot.loc[:,(toplot.columns<0)&(toplot.columns>-test_win)].mean(axis=1)
+    post=toplot.loc[:,(toplot.columns>0)&(toplot.columns<test_win)].mean(axis=1)
+
+    diff = post-pre
+    diff_median=diff.median()
+    print(f'n={len(diff)}')
+    print(f'diff median: {diff_median}')
+    analysis_res['diff_median'] = diff_median
+
+    effect_size=diff.mean() / diff.std()
+    print(f'effect size {effect_size}')
+    analysis_res['effect_size'] = effect_size
+
+    wc_res=scipy.stats.wilcoxon(diff)
+    analysis_res['wc_res'] = wc_res
+    print(wc_res)
+    
+    # correlation
+#     toplot_z=scipy.stats.zscore(toplot,axis=1)
+    corr_res={}
+    to_corr=toplot_z.loc[:,toplot_z.columns<0].melt()
+    corr_res['pre']=scipy.stats.pearsonr(to_corr['variable'],to_corr['value'])
+    to_corr=toplot_z.loc[:,toplot_z.columns>0].melt()
+    corr_res['post']=scipy.stats.pearsonr(to_corr['variable'],to_corr['value'])
+    analysis_res['corr_res']=corr_res
+    print(corr_res)
+    
+    
+    # regression
+    reg_res=ah.fit_time_prepost_interaction(ach_peri)
+    reg_res_shuffle=ah.fit_time_prepost_interaction(ach_peri_shuffle)
+    analysis_res['reg_res'] = reg_res
+    analysis_res['reg_res_shuffle'] = reg_res_shuffle
+    print(reg_res['summary_df'])
+    
+    
+    # plot
+    if do_plot:
+        fig,ax=ph.plot_mean_error_plot(toplot_z,mean_axis=0,ax=ax,fig=fig)
+        fig,ax=ph.plot_mean_error_plot(ach_peri_shuffle,mean_axis=0,fig=fig,ax=ax,color='grey')
+        ax.set_xlabel('Time (s)')
+        return analysis_res,fig,ax
+
+    return analysis_res
