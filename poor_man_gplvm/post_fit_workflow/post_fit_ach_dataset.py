@@ -153,13 +153,13 @@ def event_triggered_analysis_multiple_feature_event(feature_d,event_ts_d,n_shuff
     for feat_name,feat in feature_d.items():
         for event_name,event_ts in event_ts_d.items():
             if do_plot:
-                analysis_res,fig,ax=event_triggered_analysis(feat,event_ts,n_shuffle=n_shuffle,minmax=minmax,do_zscore=do_zscore,test_win=test_win,do_plot=do_plot,fig=fig,ax=ax)
+                analysis_res,fig_,ax_=event_triggered_analysis(feat,event_ts,n_shuffle=n_shuffle,minmax=minmax,do_zscore=do_zscore,test_win=test_win,do_plot=do_plot,fig=fig,ax=ax)
             else:
                 analysis_res = event_triggered_analysis(feat,event_ts,n_shuffle=n_shuffle,minmax=minmax,do_zscore=do_zscore,test_win=test_win)
             analysis_res_d[feat_name,event_name] = analysis_res
             if do_plot:
-                fig_d[feat_name,event_name] = fig
-                ax_d[feat_name,event_name] = ax
+                fig_d[feat_name,event_name] = fig_
+                ax_d[feat_name,event_name] = ax_
     if do_plot:
         return analysis_res_d,fig_d,ax_d
     return analysis_res_d
