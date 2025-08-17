@@ -497,12 +497,12 @@ def set_symmetric_ticks(axis, xlim=None, ylim=None, do_int=True, apply_to='y'):
             lim = getlim()
         lo, hi = lim
         if do_int:
-            M = int(np.ceil(max(abs(lo), abs(hi))))
+            M = int(np.floor(min(abs(lo), abs(hi))))
             if M == 0:
                 M = 1
             return [-M, 0, M]
         else:
-            M = float(max(abs(lo), abs(hi)))
+            M = float(min(abs(lo), abs(hi)))
             if M == 0:
                 eps = 1e-6 if lo == 0 else abs(lo) * 1e-6
                 M = eps
