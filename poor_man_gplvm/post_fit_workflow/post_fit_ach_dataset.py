@@ -173,8 +173,8 @@ def prep_feature_d(prep_res,consec_pv_dist_metric='correlation',continuous_dynam
     pop_fr = spike_mat_sub.mean(axis=1) / np.median(np.diff(spike_mat_sub.t))
     consec_pv_dist=ah.get_consecutive_pv_distance(spike_mat_sub,metric=consec_pv_dist_metric)
 
-    p_continuous = prep_res['post_latent_marg'][:,continuous_dynamics_ind]
-    p_jump = prep_res['post_latent_marg'][:,jump_dynamics_ind]
+    p_continuous = prep_res['posterior_dynamics_marg'][:,continuous_dynamics_ind]
+    p_jump = prep_res['posterior_dynamics_marg'][:,jump_dynamics_ind]
     feature_d = {'ach':ach,'pop_fr':pop_fr,'consec_pv_dist':consec_pv_dist,'p_continuous':p_continuous,'p_jump':p_jump}
     return feature_d
 
