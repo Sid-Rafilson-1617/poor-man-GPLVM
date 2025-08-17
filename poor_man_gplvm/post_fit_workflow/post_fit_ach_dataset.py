@@ -79,7 +79,7 @@ def find_ach_ramp_onset(ach_data,smooth_win=1,height=0.05,do_zscore=True,detrend
     ach_ramp_onset_res = {'ach_ramp_onset':ach_ramp_onset,'slope':slope,'ach_data_smth':ach_data_smth,'ach_data':ach_data,'peak_heights':peak_heights}
     return ach_ramp_onset_res
 
-def event_triggered_analysis(feature,event_ts,n_shuffle=10,minmax=4,do_zscore=False,test_win=1,do_plot=False,fig=None,ax=None):
+def event_triggered_analysis(feature,event_ts,n_shuffle=10,minmax=4,do_zscore=False,test_win=1,do_plot=False,fig=None,ax=None,ylabel=None,title=None,ylim=None):
     '''
     do event triggered analysis on a feature, as well as circularly shuffle the events to get null
     for test statistics, get the pre post difference, correlation with time within pre/post, regression analysis with time_within and C(is_post)
@@ -138,19 +138,33 @@ def event_triggered_analysis(feature,event_ts,n_shuffle=10,minmax=4,do_zscore=Fa
         fig,ax=ph.plot_mean_error_plot(toplot_z,mean_axis=0,ax=ax,fig=fig)
         fig,ax=ph.plot_mean_error_plot(ach_peri_shuffle,mean_axis=0,fig=fig,ax=ax,color='grey')
         ax.set_xlabel('Time (s)')
+        if ylabel is not None:
+            ax.set_ylabel(ylabel)
+        if title is not None:
+            ax.set_title(title)
+        if ylim is not None:
+            ax.set_ylim(ylim)
         return analysis_res,fig,ax
 
     return analysis_res
 
 ##### main analysis #####
-def event_triggered_analysis_multiple_feature_event(feature_d,event_ts_d,n_shuffle=10,minmax=4,do_zscore=False,test_win=1,do_plot=False,fig=None,ax=None):
+def event_triggered_analysis_multiple_feature_event(feature_d,event_ts_d,n_shuffle=10,minmax=4,do_zscore=False,test_win=1,do_plot=False,fig=None,ax=None,ylabel_d={},title_d={},ylim_d={}):
     '''
     wrapper of event_triggered_analysis for multiple features and events
     '''
     analysis_res_d = {}
+    ylabel_d_ = {k:k for k in feature_d.keys()} # by default use the feature name as ylabel, but can be overridden by ylabel_d
+    title_d_ = {k:k for k in event_ts_d.keys()} # by default use the event name as title, but can be overridden by title_d
+    ylim_d_ = {k:None for k in feature_d.keys()} # by default use None as ylim, but can be overridden by ylim_d
+
+    ylabel_d_.update(ylabel_d)
+    title_d_.update(title_d)
+    ylim_d_.update(ylim_d)
     if do_plot:
         fig_d = {}
         ax_d = {}
+        
     for feat_name,feat in feature_d.items():
         print(f'====Feature: {feat_name}====')
         for event_name,event_ts in event_ts_d.items():
@@ -158,9 +172,10 @@ def event_triggered_analysis_multiple_feature_event(feature_d,event_ts_d,n_shuff
             if do_plot:
                 analysis_res,fig_,ax_=event_triggered_analysis(feat,event_ts,n_shuffle=n_shuffle,minmax=minmax,do_zscore=do_zscore,test_win=test_win,do_plot=do_plot,fig=fig,ax=ax)
             else:
-                analysis_res = event_triggered_analysis(feat,event_ts,n_shuffle=n_shuffle,minmax=minmax,do_zscore=do_zscore,test_win=test_win)
+                analysis_res = event_triggered_analysis(feat,event_ts,n_shuffle=n_shuffle,minmax=minmax,do_zscore=do_zscore,test_win=test_win,ylabel=ylabel_d_[feat_name],title=title_d_[event_name],ylim=ylim_d_[feat_name])
             analysis_res_d[feat_name,event_name] = analysis_res
             if do_plot:
+                ax_=ph.set_two_ticks(ax_)
                 fig_d[feat_name,event_name] = fig_
                 ax_d[feat_name,event_name] = ax_
     if do_plot:
