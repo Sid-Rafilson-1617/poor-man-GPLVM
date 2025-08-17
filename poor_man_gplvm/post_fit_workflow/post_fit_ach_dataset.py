@@ -141,3 +141,25 @@ def event_triggered_analysis(feature,event_ts,n_shuffle=10,minmax=4,do_zscore=Fa
         return analysis_res,fig,ax
 
     return analysis_res
+
+def event_triggered_analysis_multiple_feature_event(feature_d,event_ts_d,n_shuffle=10,minmax=4,do_zscore=False,test_win=1,do_plot=False,fig=None,ax=None):
+    '''
+    wrapper of event_triggered_analysis for multiple features and events
+    '''
+    analysis_res_d = {}
+    if do_plot:
+        fig_d = {}
+        ax_d = {}
+    for feat_name,feat in feature_d.items():
+        for event_name,event_ts in event_ts_d.items():
+            if do_plot:
+                analysis_res,fig,ax=event_triggered_analysis(feat,event_ts,n_shuffle=n_shuffle,minmax=minmax,do_zscore=do_zscore,test_win=test_win,do_plot=do_plot,fig=fig,ax=ax)
+            else:
+                analysis_res = event_triggered_analysis(feat,event_ts,n_shuffle=n_shuffle,minmax=minmax,do_zscore=do_zscore,test_win=test_win)
+            analysis_res_d[feat_name,event_name] = analysis_res
+            if do_plot:
+                fig_d[feat_name,event_name] = fig
+                ax_d[feat_name,event_name] = ax
+    if do_plot:
+        return analysis_res_d,fig_d,ax_d
+    return analysis_res_d
