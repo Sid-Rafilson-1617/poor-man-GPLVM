@@ -228,6 +228,27 @@ def event_triggered_analysis_multiple_feature_event(feature_d,event_ts_d,n_shuff
         return analysis_res_d,fig_d,ax_d
     return analysis_res_d
 
+from sklearn.cluster import KMeans
+def cluster_peri_event(peri_event,n_cluster=2,do_plot=False,fig=None,ax=None):
+    '''
+    peri_event: n_sample x n_time
+    '''
+    kmeans = KMeans(n_clusters=n_cluster,random_state=0).fit(peri_event)
+    peri_event_cluster_mean_d ={}
+    peri_event_per_cluster_d={}
+    for i in range(n_cluster):
+        peri_event_per_cluster_d[i] = peri_event[kmeans.labels_==i]
+        peri_event_cluster_mean_d[i] = peri_event_per_cluster_d[i].mean(axis=0)
+    to_return = {'peri_event_cluster_mean_d':peri_event_cluster_mean_d,'peri_event_per_cluster_d':peri_event_per_cluster_d,'kmeans':kmeans}
+    if do_plot:
+        for i in range(n_cluster):
+            fig,ax = ph.plot_mean_error_plot(peri_event_per_cluster_d[i],mean_axis=0,fig=fig,ax=ax)
+            ax.set_title(f'Cluster {i}')
+            ax.set_xlabel('Time (s)')
+        return to_return,fig,ax
+    return to_return
+
+
 def prep_feature_d(prep_res,consec_pv_dist_metric='correlation',continuous_dynamics_ind=0,jump_dynamics_ind=1,feature_to_include=['ach','pop_fr','consec_pv_dist','p_continuous','p_jump']):
     '''
     prepare the features used for peri event analysis
