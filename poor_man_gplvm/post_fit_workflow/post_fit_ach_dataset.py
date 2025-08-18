@@ -304,3 +304,20 @@ def get_post_pre_diff(df,center=0,test_win=None):
     effect_size=diff.mean() / diff.std()
     dres = {'pre':pre,'post':post,'diff':diff,'diff_median':diff_median,'effect_size':effect_size}
     return dres
+
+def test_pre_post_against_shuffle(df,df_shuffle,center=0,test_win=None):
+    '''
+    test the pre post difference against shuffle
+    df: pd.DataFrame, the feature to be analyzed, n_sample x n_time; the n_sample here is mean/median over, so doesn't matter in significance
+    df_shuffle: pd.DataFrame, the shuffle of the feature, n_shuffle x n_time
+    center: the time of the event, default is 0
+    test_win: in second, a smaller window to do the pre post difference test
+    '''
+    dres=get_post_pre_diff(df,center=0,test_win=None)
+    dres_shuffle=get_post_pre_diff(df_shuffle,center=0,test_win=None)
+    diff = dres['diff_median']
+    diff_shuffle= dres_shuffle['diff']
+    p = np.mean(diff >= diff_shuffle)
+    test_res = {'diff':diff,'diff_shuffle':diff_shuffle,'p':p,'effect_size':dres['effect_size']}
+    return test_res
+
