@@ -370,14 +370,20 @@ def get_mean_feature_in_interval(feature_d,interval_d,ep=None):
     for feat_name,feat in feature_d.items():
         for interval_name,interval in interval_d.items():
             if isinstance(interval,nap.IntervalSet):
-                feat_sub = feat.restrict(ep)
+                if ep is not None:
+                    feat_sub = feat.restrict(ep)
+                else:
+                    feat_sub = feat
                 mean_feat = []
                 for intv in interval:
                     feat_sub_intv = feat_sub.restrict(intv).mean(axis=0)
                     mean_feat.append(feat_sub_intv)
                 mean_feature_d[feat_name,interval_name] = nap.TsdFrame(d=mean_feat,t=interval['start'])
             else:
-                mean_feature_d[feat_name,interval_name] = feat[interval.d].restrict(ep)
+                if ep is not None:
+                    mean_feature_d[feat_name,interval_name] = feat[interval.d].restrict(ep)
+                else:
+                    mean_feature_d[feat_name,interval_name] = feat[interval.d]
     return mean_feature_d
 
 def get_distance_matrix(mean_feature_d,metric_d={'pv':'correlation'}):
