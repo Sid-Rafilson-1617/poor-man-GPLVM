@@ -76,11 +76,14 @@ def find_ach_ramp_onset(ach_data,smooth_win=1,height=0.05,do_zscore=True,detrend
         ach_data = ach_data - nap.apply_lowpass_filter(ach_data,detrend_cutoff).d
     if smooth_win is not None:
         ach_data_smth = ach_data.smooth(smooth_win)
+        ach_data_smth_for_peak = ach_data.smooth(smooth_win/10) # less smooth for peak and valley, so that the onset can be sharp
     else:
         ach_data_smth = ach_data
+        ach_data_smth_for_peak = ach_data
     
-    signal_peaks,signal_metadata_peak=scipy.signal.find_peaks(ach_data_smth,prominence=0.01)
-    signal_valleys,signal_metadata_valley=scipy.signal.find_peaks(-ach_data_smth,prominence=0.01)
+    
+    signal_peaks,signal_metadata_peak=scipy.signal.find_peaks(ach_data_smth_for_peak,prominence=0.01)
+    signal_valleys,signal_metadata_valley=scipy.signal.find_peaks(-ach_data_smth_for_peak,prominence=0.01)
 
     slope = ach_data_smth.derivative()
     peaks,metadata=scipy.signal.find_peaks(slope,height=height)
