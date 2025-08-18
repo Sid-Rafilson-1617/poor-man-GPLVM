@@ -407,9 +407,10 @@ def get_mean_feature_in_interval(feature_d,interval_d):
                 mean_feat = []
                 for intv in interval:
                     
-                    feat_sub_intv = feat.restrict(intv).mean(axis=0)
+                    feat_sub_intv = feat.restrict(intv)
                     if feat_sub_intv.shape[0]>0:
-                        mean_feat.append(feat_sub_intv)
+                        mean_feat.append(feat_sub_intv.mean(axis=0))
+                    
                 mean_feature_d[feat_name,interval_name] = nap.TsdFrame(d=mean_feat,t=interval['start'])
             else:            
                mean_feature_d[feat_name,interval_name] = feat[interval.d]
