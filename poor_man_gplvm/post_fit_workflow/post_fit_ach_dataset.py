@@ -279,7 +279,7 @@ def manual_cluster_peri_event(peri_event,time_window=(-2,0),n_cluster=2,do_plot=
     to_return = {'temporal_mean_quantile':temporal_mean_quantile,'temporal_mean':temporal_mean,'peri_event_per_cluster_d':peri_event_per_cluster_d,'peri_event_per_cluster_mean_d':peri_event_per_cluster_mean_d}
     if do_plot:
         for i in range(n_cluster):
-            fig,ax = ph.plot_mean_error_plot(peri_event_per_cluster_mean_d[i],fig=fig,ax=ax,color=f'C{i}')
+            fig,ax = ph.plot_mean_error_plot(peri_event_per_cluster_d[i],fig=fig,ax=ax,color=f'C{i}')
             ax.set_title(f'Cluster {i}')
             ax.set_xlabel('Time (s)')
         return to_return,fig,ax
