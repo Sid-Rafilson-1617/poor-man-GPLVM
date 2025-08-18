@@ -451,6 +451,35 @@ def set_plotly_fonts(fig,
 
     return fig
 
+def _round_to_first_distinguishing_digit(a, b):
+    """
+    Round two numbers to the precision of the first non-zero digit
+    that distinguishes them.
+
+    Examples:
+    - a=0.0123, b=0.0345 -> precision 2 -> (0.01, 0.03)
+    - a=1234, b=5678 -> precision -3 -> (1000, 6000)
+    """
+    try:
+        a = float(a)
+        b = float(b)
+    except Exception:
+        return a, b
+
+    if not (np.isfinite(a) and np.isfinite(b)):
+        return a, b
+
+    diff = abs(b - a)
+    if diff == 0:
+        return a, b
+
+    order = np.floor(np.log10(diff))
+    precision = int(-order)
+    # Python round supports negative precision for rounding to tens/hundreds/etc.
+    ra = round(a, precision)
+    rb = round(b, precision)
+    return ra, rb
+
 # for small plots, only keep two ticks 
 def set_two_ticks(axis, xlim=None, ylim=None, do_int=True, apply_to='y'):
     """
@@ -473,7 +502,15 @@ def set_two_ticks(axis, xlim=None, ylim=None, do_int=True, apply_to='y'):
                 eps = 1e-6 if lo == 0 else abs(lo) * 1e-6
                 lo -= eps
                 hi += eps
-            return [lo, hi]
+            # ensure lo <= hi before rounding
+            if lo > hi:
+                lo, hi = hi, lo
+            lo_r, hi_r = _round_to_first_distinguishing_digit(lo, hi)
+            if lo_r == hi_r:
+                eps = 1e-6 if lo_r == 0 else abs(lo_r) * 1e-6
+                lo_r -= eps
+                hi_r += eps
+            return [lo_r, hi_r]
 
     if apply_to in ('y', 'both'):
         y_ticks = _compute_two(ylim, axis.get_ylim)
@@ -503,10 +540,13 @@ def set_symmetric_ticks(axis, xlim=None, ylim=None, do_int=True, apply_to='y'):
             return [-M, 0, M]
         else:
             M = float(min(abs(lo), abs(hi)))
-            if M == 0:
+            # Round to the first distinguishing digit of limit ticks (-M, M)
+            ml, mh = _round_to_first_distinguishing_digit(-M, M)
+            M_r = max(abs(ml), abs(mh))
+            if M_r == 0:
                 eps = 1e-6 if lo == 0 else abs(lo) * 1e-6
-                M = eps
-            return [-M, 0.0, M]
+                M_r = eps
+            return [-M_r, 0.0, M_r]
 
     if apply_to in ('y', 'both'):
         y_ticks = _compute_three(ylim, axis.get_ylim)
