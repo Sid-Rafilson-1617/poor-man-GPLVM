@@ -275,7 +275,8 @@ def main(data_path=None,fit_res_path=None,prep_res=None,
     
     if res_data_save_path is not None:
         os.makedirs(os.path.dirname(res_data_save_path),exist_ok=True)
-        np.savez(res_data_save_path,**analysis_res_d)
+        # np.savez(res_data_save_path,**analysis_res_d)
+        dill.dump(analysis_res_d,open(res_data_save_path,'wb'))
     if res_fig_save_path is not None and event_triggered_analysis_kwargs['do_plot']:
         os.makedirs(os.path.dirname(res_fig_save_path),exist_ok=True)
         for feat_name,event_name in fig_d.keys():
