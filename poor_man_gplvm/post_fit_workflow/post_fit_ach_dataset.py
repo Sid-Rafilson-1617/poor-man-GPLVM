@@ -349,13 +349,17 @@ def feature_distance_vs_label_distance_analysis(prep_res,label_intv,ach_onset=No
     
     analysis_res_d = {}
     which_interval_index_d = {}
+    when_label_change_d = {}
     for key,feat in mean_feature_d.items():
         which_interval_index = label_intv.in_interval(feat)
         which_interval_index_d[key] = which_interval_index
+        when_label_change = np.diff(which_interval_index)>0
+        when_label_change = np.concatenate([[0],when_label_change])
+        when_label_change_d[key] = when_label_change
         shuffle_res=da.shuffle_test_distance_vs_label(dist_d[key], which_interval_index, n_shuffles=n_shuffles, rng=None,label_distance_threshold=label_distance_threshold,timestamps=feat.t)
         analysis_res_d[key] = shuffle_res
 
-    feature_dist_vs_label_dist_res = {'dist_d':dist_d,'analysis_res_d':analysis_res_d,'mean_feature_d':mean_feature_d,'interval_d':interval_d,'which_interval_index_d':which_interval_index_d}
+    feature_dist_vs_label_dist_res = {'dist_d':dist_d,'analysis_res_d':analysis_res_d,'mean_feature_d':mean_feature_d,'interval_d':interval_d,'which_interval_index_d':which_interval_index_d,'when_label_change_d':when_label_change_d}
     
     return feature_dist_vs_label_dist_res
 
