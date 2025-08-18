@@ -312,6 +312,7 @@ def prep_feature_d(prep_res,consec_pv_dist_metric='correlation',continuous_dynam
     if 'pv' in feature_to_include:
         feature_d['pv'] = spike_mat_sub
     if 'p_latent' in feature_to_include:
+        
         ma = mask_d.get('p_latent',None)
         if ma is None:
             feature_d['p_latent'] = prep_res['posterior_latent_marg']
@@ -405,8 +406,10 @@ def get_mean_feature_in_interval(feature_d,interval_d):
                 
                 mean_feat = []
                 for intv in interval:
+                    
                     feat_sub_intv = feat.restrict(intv).mean(axis=0)
-                    mean_feat.append(feat_sub_intv)
+                    if feat_sub_intv.shape[0]>0:
+                        mean_feat.append(feat_sub_intv)
                 mean_feature_d[feat_name,interval_name] = nap.TsdFrame(d=mean_feat,t=interval['start'])
             else:            
                mean_feature_d[feat_name,interval_name] = feat[interval.d]
