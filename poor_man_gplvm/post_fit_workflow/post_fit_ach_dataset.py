@@ -297,8 +297,8 @@ def get_post_pre_diff(df,center=0,test_win=None):
     '''
     if test_win is None:
         test_win = np.minimum(center - df.columns.min(),df.columns.max() - center)
-    pre = df.loc[:,df.columns<center-test_win].mean(axis=1)
-    post = df.loc[:,df.columns>center+test_win].mean(axis=1)
+    pre = df.loc[:,(df.columns<center)&(df.columns>=center-test_win)].mean(axis=1)
+    post = df.loc[:,(df.columns>center)&(df.columns<=center+test_win)].mean(axis=1)
     diff = post-pre
     diff_median=diff.median()
     effect_size=diff.mean() / diff.std()
