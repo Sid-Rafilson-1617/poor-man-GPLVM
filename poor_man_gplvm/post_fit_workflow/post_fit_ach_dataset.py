@@ -29,6 +29,8 @@ import poor_man_gplvm.plot_helper as ph
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
+from scipy.spatial.distance import squareform, pdist
+import poor_man_gplvm.distance_analysis as da
 
 # helper function to get list of processed decoding result from em_res_l (multiple em fit results)
 def get_decode_res_l_from_em_res_l(em_res_l,t_l=None):
@@ -158,7 +160,7 @@ def event_triggered_analysis(feature,event_ts,n_shuffle=10,minmax=4,do_zscore=Fa
 
     return analysis_res
 
-##### main analysis #####
+##### main analysis: event triggered analysis #####
 def event_triggered_analysis_multiple_feature_event(feature_d,event_ts_d,n_shuffle=10,minmax=4,do_zscore=False,test_win=1,do_plot=False,fig=None,ax=None,ylabel_d={},title_d={},ylim_d={}):
     '''
     wrapper of event_triggered_analysis for multiple features and events
@@ -209,6 +211,10 @@ def prep_feature_d(prep_res,consec_pv_dist_metric='correlation',continuous_dynam
         feature_d['ach'] = ach
     if 'pop_fr' in feature_to_include:
         feature_d['pop_fr'] = pop_fr
+    if 'pv' in feature_to_include:
+        feature_d['pv'] = spike_mat_sub
+    if 'p_latent' in feature_to_include:
+        feature_d['p_latent'] = prep_res['posterior_latent_marg']
     if 'consec_pv_dist' in feature_to_include:
         feature_d['consec_pv_dist'] = consec_pv_dist
     if 'p_continuous' in feature_to_include:
@@ -241,6 +247,40 @@ def segregate_event_ts_by_sleep_state(event_ts_d,sleep_state_label_d):
             event_ts_d_[event_name+'_'+label] = event_ts.restrict(intv)
     return event_ts_d_
 
+
+def get_post_pre_diff(df,center=0,test_win=None):
+    '''
+    assume columne is peri event time, 
+    center: the time of the event, default is 0
+    '''
+    if test_win is None:
+        test_win = np.minimum(center - df.columns.min(),df.columns.max() - center)
+    pre = df.loc[:,(df.columns<center)&(df.columns>=center-test_win)].mean(axis=1)
+    post = df.loc[:,(df.columns>center)&(df.columns<=center+test_win)].mean(axis=1)
+    diff = post-pre
+    diff_median=diff.median()
+    effect_size=diff.mean() / diff.std()
+    dres = {'pre':pre,'post':post,'diff':diff,'diff_median':diff_median,'effect_size':effect_size}
+    return dres
+
+def test_pre_post_against_shuffle(df,df_shuffle,center=0,test_win=None):
+    '''
+    test the pre post difference against shuffle
+    df: pd.DataFrame, the feature to be analyzed, n_sample x n_time; the n_sample here is mean/median over, so doesn't matter in significance
+    df_shuffle: pd.DataFrame, the shuffle of the feature, n_shuffle x n_time
+    center: the time of the event, default is 0
+    test_win: in second, a smaller window to do the pre post difference test
+    '''
+    dres=get_post_pre_diff(df,center=0,test_win=None)
+    dres_shuffle=get_post_pre_diff(df_shuffle,center=0,test_win=None)
+    diff = dres['diff_median']
+    diff_shuffle= dres_shuffle['diff']
+    p = np.mean(diff >= diff_shuffle)
+    test_res = {'diff':diff,'diff_shuffle':diff_shuffle,'p':p,'effect_size':dres['effect_size']}
+    return test_res
+
+
+
 # ===== main analysis: distance vs label distance ===== #
 # need a dict of intervals (eg ACh bouts, ripples), a dict of features (e.g. posterior, pv), a dict of labels (e.g. indices of NREM intervals)
 # for each interval, get the mean feature within
@@ -249,6 +289,72 @@ def segregate_event_ts_by_sleep_state(event_ts_d,sleep_state_label_d):
 # do regression and shuffle test
 # plot tentative: dist matrix marked by label transition; mean feature in interval indices, marked by label transition; regression weight with shuffle
 
+def get_mean_feature_in_interval(feature_d,interval_d,ep=None):
+    '''
+    get the mean feature within each interval
+    feature_d: dict, key is the feature name, value is the feature nap.Tsd
+    interval_d: dict, key is the interval name, value is the nap.IntervalSet, or nap.Tsd which is a mask
+    ep: nap.IntervalSet, the epoch to restrict the feature to, e.g. NREM intervals
+    '''
+    mean_feature_d = {}
+    for feat_name,feat in feature_d.items():
+        for interval_name,interval in interval_d.items():
+            if isinstance(interval,nap.IntervalSet):
+                mean_feature_d[feat_name,interval_name] = feat.restrict(ep).restrict(interval).mean(axis=0)
+            else:
+                mean_feature_d[feat_name,interval_name] = feat[interval.d].restrict(ep)
+    return mean_feature_d
+
+def get_distance_matrix(mean_feature_d,metric_d={'pv':'correlation'}):
+    '''
+    get distance between each pair of intervals for the mean feature within each interval
+    default: posterior, using wasserstein-1 distance
+    '''
+    dist_d = {}
+    for k,val in mean_feature_d.items():
+        if 'pv' in k:
+            dist_d[k] = squareform(pdist(val.d,metric=metric_d['pv']))
+        else:
+            dist_d[k],C = da.w1_cdf_distance_matrix(val.d)
+    return dist_d
+
+
+def feature_distance_vs_label_distance_analysis(prep_res,label_intv,ach_onset=None,ach_extend_win=1,feature_key_l=['p_latent','pv'],interval_key_l=['ACh_onset','ripple'],n_shuffles=200,label_distance_threshold=None):
+    '''
+    ach_onset: Ts, the ACh onset timestamps
+    ach_extend_win: int, the window to extend the ACh onset into interval, in second
+    label_intv: the nap.IntervalSet whose index is the label, e.g. NREM intervals
+    feature_key_l: list, the features to include
+    interval_key_l: list, the intervals to include
+    '''
+    feature_d = prep_feature_d(prep_res,feature_to_include=feature_key_l)
+    interval_d = {}
+    if 'ACh_onset' in interval_key_l:
+        assert ach_onset is not None
+        interval_d['ACh_onset'] = nap.IntervalSet(ach_onset.t,ach_onset.t+ach_extend_win)
+    if 'ripple' in interval_key_l:
+        if 'is_ripple' in prep_res:
+            interval_d['ripple'] = prep_res['is_ripple']
+        else:
+            print('ripple interval not found, skipping')
+    mean_feature_d = get_mean_feature_in_interval(feature_d,interval_d,ep=label_intv)
+    dist_d = get_distance_matrix(mean_feature_d)
+    
+    analysis_res_d = {}
+    which_interval_index_d = {}
+    for key,feat in mean_feature_d.items():
+        which_interval_index = label_intv.in_interval(feat)
+        which_interval_index_d[key] = which_interval_index
+        shuffle_res=da.shuffle_test_distance_vs_label(dist_d[key], which_interval_index, n_shuffles=n_shuffles, rng=None,label_distance_threshold=label_distance_threshold,timestamps=feat.t)
+        analysis_res_d[key] = shuffle_res
+
+    feature_dist_vs_label_dist_res = {'dist_d':dist_d,'analysis_res_d':analysis_res_d,'mean_feature_d':mean_feature_d,'interval_d':interval_d,'which_interval_index_d':which_interval_index_d}
+    
+    return feature_dist_vs_label_dist_res
+
+
+
+# ====all together====#
 def main(data_path=None,fit_res_path=None,prep_res=None,
     ach_ramp_kwargs = {'height':0.05,'detrend_cutoff':None,'shift':-1.},
     event_triggered_analysis_kwargs = {'n_shuffle':50,'minmax':4,'do_zscore':False,'test_win':4,'do_plot':True},
@@ -294,36 +400,4 @@ def main(data_path=None,fit_res_path=None,prep_res=None,
     
 
     return analysis_res_d
-
-
-def get_post_pre_diff(df,center=0,test_win=None):
-    '''
-    assume columne is peri event time, 
-    center: the time of the event, default is 0
-    '''
-    if test_win is None:
-        test_win = np.minimum(center - df.columns.min(),df.columns.max() - center)
-    pre = df.loc[:,(df.columns<center)&(df.columns>=center-test_win)].mean(axis=1)
-    post = df.loc[:,(df.columns>center)&(df.columns<=center+test_win)].mean(axis=1)
-    diff = post-pre
-    diff_median=diff.median()
-    effect_size=diff.mean() / diff.std()
-    dres = {'pre':pre,'post':post,'diff':diff,'diff_median':diff_median,'effect_size':effect_size}
-    return dres
-
-def test_pre_post_against_shuffle(df,df_shuffle,center=0,test_win=None):
-    '''
-    test the pre post difference against shuffle
-    df: pd.DataFrame, the feature to be analyzed, n_sample x n_time; the n_sample here is mean/median over, so doesn't matter in significance
-    df_shuffle: pd.DataFrame, the shuffle of the feature, n_shuffle x n_time
-    center: the time of the event, default is 0
-    test_win: in second, a smaller window to do the pre post difference test
-    '''
-    dres=get_post_pre_diff(df,center=0,test_win=None)
-    dres_shuffle=get_post_pre_diff(df_shuffle,center=0,test_win=None)
-    diff = dres['diff_median']
-    diff_shuffle= dres_shuffle['diff']
-    p = np.mean(diff >= diff_shuffle)
-    test_res = {'diff':diff,'diff_shuffle':diff_shuffle,'p':p,'effect_size':dres['effect_size']}
-    return test_res
 
