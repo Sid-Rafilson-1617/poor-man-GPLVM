@@ -63,6 +63,54 @@ def load_data_and_fit_res(data_path,fit_res_path):
 
 def find_ach_ramp_onset(ach_data,smooth_win=1,height=0.05,do_zscore=True,detrend_cutoff=None,shift=-1.):
     '''
+    current method: gaussian smooth, finite difference for slope, find peaks with some threshold, find closest signal valley as the onset and peak as the end, instead of manual shifting 
+
+    detrend_cutoff: float, optional, usually 0.01
+    shift: float, optional, shift the onset by this amount in second, to correct for the detection not using an acausal window
+    '''
+    if do_zscore:
+        t_l = ach_data.t
+        ach_data = scipy.stats.zscore(ach_data)
+        ach_data = nap.Tsd(d=ach_data,t=t_l)
+    if detrend_cutoff is not None:
+        ach_data = ach_data - nap.apply_lowpass_filter(ach_data,detrend_cutoff).d
+    if smooth_win is not None:
+        ach_data_smth = ach_data.smooth(smooth_win)
+    else:
+        ach_data_smth = ach_data
+    
+    signal_peaks,signal_metadata_peak=scipy.signal.find_peaks(ach_data_smth,prominence=0.01)
+    signal_valleys,signal_metadata_valley=scipy.signal.find_peaks(-ach_data_smth,prominence=0.01)
+
+    slope = ach_data_smth.derivative()
+    peaks,metadata=scipy.signal.find_peaks(slope,height=height)
+    peak_heights = metadata['peak_heights']
+    peak_heights = nap.Tsd(d=peak_heights,t=slope.t[peaks])
+
+    slope_peak_time = nap.Ts(slope.t[peaks])
+    time_diff_mat = slope_peak_time.t[:,None] - ach_data_smth.t[signal_valleys][None,:] # n_slope_peak x n_signal_valley
+    time_diff_mat_ = copy.copy(time_diff_mat)
+    time_diff_mat_[time_diff_mat_ < 0] = np.inf
+    closest_signal_valley_index = time_diff_mat_.argmin(axis=1) # min positive time difference
+    closest_signal_valley_time = ach_data_smth.t[signal_valleys][closest_signal_valley_index]
+    
+    time_diff_mat_ = copy.copy(time_diff_mat)
+    time_diff_mat_[time_diff_mat_ > 0] = -np.inf
+    closest_signal_peak_index = time_diff_mat_.argmax(axis=1) # max positive time difference
+    closest_signal_peak_time = ach_data_smth.t[signal_peaks][closest_signal_peak_index]
+    
+    ach_ramp_onset = nap.Ts(closest_signal_valley_time)
+    ach_ramp_end = nap.Ts(closest_signal_peak_time)
+
+    # ach_ramp_onset = nap.Ts(slope.t[peaks]+shift)
+    ach_ramp_onset_res = {'ach_ramp_onset':ach_ramp_onset,'ach_ramp_end':ach_ramp_end,'slope':slope,'slope_peak_time':slope_peak_time,'signal_peaks':signal_peaks,'signal_valleys':signal_valleys,'signal_metadata_peak':signal_metadata_peak,'signal_metadata_valley':signal_metadata_valley,'ach_data_smth':ach_data_smth,'ach_data':ach_data,'peak_heights':peak_heights}
+    return ach_ramp_onset_res
+
+
+def find_ach_ramp_onset_old(ach_data,smooth_win=1,height=0.05,do_zscore=True,detrend_cutoff=None,shift=-1.):
+    '''
+    current method: gaussian smooth, finite difference for slope, find peaks with some threshold, shift
+
     detrend_cutoff: float, optional, usually 0.01
     shift: float, optional, shift the onset by this amount in second, to correct for the detection not using an acausal window
     '''
