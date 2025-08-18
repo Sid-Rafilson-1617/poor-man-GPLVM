@@ -106,8 +106,13 @@ def find_ach_ramp_onset(ach_data,smooth_win=1,height=0.05,do_zscore=True,detrend
     ach_ramp_onset = nap.Ts(closest_signal_valley_time)
     ach_ramp_end = nap.Ts(closest_signal_peak_time)
 
+    # make interval; need to filter out end before the earliest onset, and the onset after the last end
+    ach_ramp_onset_sub = ach_ramp_onset[ach_ramp_onset.t < ach_ramp_end.t.max()]
+    ach_ramp_end_sub = ach_ramp_end[ach_ramp_end.t > ach_ramp_onset.t.min()]
+    ach_ramp_intv = nap.IntervalSet(ach_ramp_onset_sub.t,ach_ramp_end_sub.t)
+
     # ach_ramp_onset = nap.Ts(slope.t[peaks]+shift)
-    ach_ramp_onset_res = {'ach_ramp_onset':ach_ramp_onset,'ach_ramp_end':ach_ramp_end,'slope':slope,'slope_peak_time':slope_peak_time,'signal_peaks':signal_peaks,'signal_valleys':signal_valleys,'signal_metadata_peak':signal_metadata_peak,'signal_metadata_valley':signal_metadata_valley,'ach_data_smth':ach_data_smth,'ach_data':ach_data,'peak_heights':peak_heights}
+    ach_ramp_onset_res = {'ach_ramp_onset':ach_ramp_onset,'ach_ramp_end':ach_ramp_end,'ach_ramp_intv':ach_ramp_intv,'slope':slope,'slope_peak_time':slope_peak_time,'signal_peaks':signal_peaks,'signal_valleys':signal_valleys,'signal_metadata_peak':signal_metadata_peak,'signal_metadata_valley':signal_metadata_valley,'ach_data_smth':ach_data_smth,'ach_data':ach_data,'peak_heights':peak_heights}
     return ach_ramp_onset_res
 
 
