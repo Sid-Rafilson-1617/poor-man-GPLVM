@@ -228,17 +228,18 @@ def turn_sleep_state_tsd_to_interval(sleep_state_index,sleep_state_label_d={'Wak
         sleep_state_intv_d[label] = intv
     return sleep_state_intv_d
 
-def segregate_event_ts_by_sleep_state(event_ts,sleep_state_label_d):
+def segregate_event_ts_by_sleep_state(event_ts_d,sleep_state_label_d):
     '''
     segregate the event timestamps by sleep state
-    event_ts: Ts, the event timestamps
+    event_ts_d: dict of Ts, key is the event name, value is the event timestamps; input dictionary to make keys more informative
     sleep_state_label_d: dict, key is the sleep state label, value is the interval
     return: dict, key is the sleep state label, value is the event timestamps
     '''
-    event_ts_d = {}
-    for label,intv in sleep_state_label_d.items():
-        event_ts_d[label] = event_ts.restrict(intv)
-    return event_ts_d
+    event_ts_d_ = {}
+    for event_name,event_ts in event_ts_d.items():
+        for label,intv in sleep_state_label_d.items():
+            event_ts_d_[event_name+'_'+label] = event_ts.restrict(intv)
+    return event_ts_d_
 
 # def prep_event_ts_d(prep_res):
 
@@ -267,7 +268,8 @@ def main(data_path=None,fit_res_path=None,prep_res=None,
     # prepare event timestamps
     sleep_state_intv=turn_sleep_state_tsd_to_interval(sleep_state_index,)
     event_ts = ach_onset_res['ach_ramp_onset']
-    event_ts_by_sleep=segregate_event_ts_by_sleep_state(event_ts,sleep_state_intv)
+    event_ts_d = {'ACh_onset':event_ts}
+    event_ts_by_sleep=segregate_event_ts_by_sleep_state(event_ts_d,sleep_state_intv)
 
     # do event triggered analysis
     analysis_res_d,fig_d,ax_d = event_triggered_analysis_multiple_feature_event(feature_d,event_ts_by_sleep,**event_triggered_analysis_kwargs)
