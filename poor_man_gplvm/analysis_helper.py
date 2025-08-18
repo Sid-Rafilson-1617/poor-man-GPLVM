@@ -42,7 +42,7 @@ def shift_timestamp(ts,time_support=None):
     ts_shift=nap.Ts(t=ts_shift)
     return ts_shift
 
-def get_peri_event_with_shuffle(feature_tsd,event_ts,n_shuffle=100,minmax=4,do_zscore=True):
+def get_peri_event_with_shuffle(feature_tsd,event_ts,n_shuffle=100,minmax=4,do_zscore=True,return_full_shuffle=False):
     '''
     get peri event signal
     get peri event average over many shuffles -- circularly shuffle the event times
@@ -51,6 +51,7 @@ def get_peri_event_with_shuffle(feature_tsd,event_ts,n_shuffle=100,minmax=4,do_z
     n_shuffle: int, the number of shuffles; if 0 then no shuffling
     minmax: int, the window for looking at peri event
     do_zscore: bool, if True, zscore across the time within each event
+    return_full_shuffle: bool, if True, return the full peri event for eac shuffle, otherwise only return the mean of the peri event for each shuffle
 
     return:
     peri_event: pd.DataFrame, n_event x n_time
@@ -76,11 +77,15 @@ def get_peri_event_with_shuffle(feature_tsd,event_ts,n_shuffle=100,minmax=4,do_z
             peri_event_sh=nap.compute_perievent_continuous(timeseries=feature_tsd,tref=event_ts_sh,minmax=minmax) # n_time x n_event
             peri_event_sh = peri_event_sh.as_dataframe().T # n_event x n_time
             if do_zscore:
-                peri_event_sh=scipy.stats.zscore(peri_event_sh,axis=1).mean(axis=0) # n_time
+                peri_event_sh=scipy.stats.zscore(peri_event_sh,axis=1)
             else:
-                peri_event_sh=peri_event_sh.mean(axis=0) # n_time
-            peri_event_sh_l.append(peri_event_sh)
-        peri_event_sh_l=pd.DataFrame(peri_event_sh_l) # n_shuffle x n_time
+                peri_event_sh=peri_event_sh
+            if return_full_shuffle:
+                peri_event_sh_l.append(peri_event_sh)
+            else:
+                peri_event_sh_l.append(peri_event_sh.mean(axis=0))
+        if not return_full_shuffle:
+            peri_event_sh_l=pd.DataFrame(peri_event_sh_l) # n_shuffle x n_time
         
     
     return peri_event,peri_event_sh_l
