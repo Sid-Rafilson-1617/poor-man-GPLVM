@@ -241,7 +241,13 @@ def segregate_event_ts_by_sleep_state(event_ts_d,sleep_state_label_d):
             event_ts_d_[event_name+'_'+label] = event_ts.restrict(intv)
     return event_ts_d_
 
-# def prep_event_ts_d(prep_res):
+# ===== main analysis: distance vs label distance ===== #
+# need a dict of intervals (eg ACh bouts, ripples), a dict of features (e.g. posterior, pv), a dict of labels (e.g. indices of NREM intervals)
+# for each interval, get the mean feature within
+# get distance between each pair of intervals
+# get label distance
+# do regression and shuffle test
+# plot tentative: dist matrix marked by label transition; mean feature in interval indices, marked by label transition; regression weight with shuffle
 
 def main(data_path=None,fit_res_path=None,prep_res=None,
     ach_ramp_kwargs = {'height':0.05,'detrend_cutoff':None,'shift':-1.},
