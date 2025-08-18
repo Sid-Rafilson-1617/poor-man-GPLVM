@@ -28,7 +28,7 @@ import poor_man_gplvm.analysis_helper as ah
 import poor_man_gplvm.plot_helper as ph
 import matplotlib.pyplot as plt
 import seaborn as sns
-import os
+import os,copy
 from scipy.spatial.distance import squareform, pdist
 import poor_man_gplvm.distance_analysis as da
 
@@ -61,7 +61,7 @@ def load_data_and_fit_res(data_path,fit_res_path):
 
     return prep_res
 
-def find_ach_ramp_onset(ach_data,smooth_win=1,height=0.05,do_zscore=True,detrend_cutoff=None,shift=-1.):
+def find_ach_ramp_onset(ach_data,smooth_win=1,height=0.05,do_zscore=True,detrend_cutoff=None):
     '''
     current method: gaussian smooth, finite difference for slope, find peaks with some threshold, find closest signal valley as the onset and peak as the end, instead of manual shifting 
 
