@@ -28,6 +28,7 @@ import poor_man_gplvm.analysis_helper as ah
 import poor_man_gplvm.plot_helper as ph
 import matplotlib.pyplot as plt
 import seaborn as sns
+import os
 
 # helper function to get list of processed decoding result from em_res_l (multiple em fit results)
 def get_decode_res_l_from_em_res_l(em_res_l,t_l=None):
@@ -58,9 +59,10 @@ def load_data_and_fit_res(data_path,fit_res_path):
 
     return prep_res
 
-def find_ach_ramp_onset(ach_data,smooth_win=1,height=0.05,do_zscore=True,detrend_cutoff=None):
+def find_ach_ramp_onset(ach_data,smooth_win=1,height=0.05,do_zscore=True,detrend_cutoff=None,shift=-1.):
     '''
     detrend_cutoff: float, optional, usually 0.01
+    shift: float, optional, shift the onset by this amount in second, to correct for the detection not using an acausal window
     '''
     if do_zscore:
         t_l = ach_data.t
@@ -77,7 +79,7 @@ def find_ach_ramp_onset(ach_data,smooth_win=1,height=0.05,do_zscore=True,detrend
     peaks,metadata=scipy.signal.find_peaks(slope,height=height)
     peak_heights = metadata['peak_heights']
     peak_heights = nap.Tsd(d=peak_heights,t=slope.t[peaks])
-    ach_ramp_onset = nap.Ts(slope.t[peaks])
+    ach_ramp_onset = nap.Ts(slope.t[peaks]+shift)
     ach_ramp_onset_res = {'ach_ramp_onset':ach_ramp_onset,'slope':slope,'ach_data_smth':ach_data_smth,'ach_data':ach_data,'peak_heights':peak_heights}
     return ach_ramp_onset_res
 
@@ -239,3 +241,47 @@ def segregate_event_ts_by_sleep_state(event_ts,sleep_state_label_d):
     return event_ts_d
 
 # def prep_event_ts_d(prep_res):
+
+def main(data_path=None,fit_res_path=None,prep_res=None,
+    ach_ramp_kwargs = {'height':0.05,'detrend_cutoff':None,'shift':-1.},
+    event_triggered_analysis_kwargs = {'n_shuffle':50,'minmax':4,'do_zscore':False,'test_win':4,'do_plot':True},
+    res_data_save_path = None,
+    res_fig_save_path = None,
+):
+    '''
+    save_path: convention: {session folder}/py_data/post_fit_quantification/ or {session folder}/py_figure/post_fit_quantification/
+    '''
+    
+    # load data and fit res
+    if prep_res is None:
+        assert data_path is not None and fit_res_path is not None
+        prep_res = load_data_and_fit_res(data_path,fit_res_path)
+    sleep_state_index = prep_res['sleep_state_index']
+    ach = prep_res['fluo_data']['ACh']
+    ach_onset_res=find_ach_ramp_onset(ach,**ach_ramp_kwargs)
+
+    # prepare features
+    feature_d = prep_feature_d(prep_res,feature_to_include=['p_continuous','ach','pop_fr','consec_pv_dist'])
+    print(feature_d.keys())
+
+    # prepare event timestamps
+    sleep_state_intv=turn_sleep_state_tsd_to_interval(sleep_state_index,)
+    event_ts = ach_onset_res['ach_ramp_onset']
+    event_ts_by_sleep=segregate_event_ts_by_sleep_state(event_ts,sleep_state_intv)
+
+    # do event triggered analysis
+    analysis_res_d,fig_d,ax_d = event_triggered_analysis_multiple_feature_event(feature_d,event_ts_by_sleep,**event_triggered_analysis_kwargs)
+    
+    
+    if res_data_save_path is not None:
+        os.makedirs(os.path.dirname(res_data_save_path),exist_ok=True)
+        np.savez(res_data_save_path,**analysis_res_d)
+    if res_fig_save_path is not None and event_triggered_analysis_kwargs['do_plot']:
+        os.makedirs(os.path.dirname(res_fig_save_path),exist_ok=True)
+        for feat_name,event_name in fig_d.keys():
+            fig_fn = f'{feat_name};{event_name}_peri_event'
+            ph.save_fig(fig_d[feat_name,event_name],fig_fn,res_fig_save_path)
+            plt.close(fig_d[feat_name,event_name])
+    
+
+    return analysis_res_d
