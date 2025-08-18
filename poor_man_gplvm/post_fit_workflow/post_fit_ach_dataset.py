@@ -259,7 +259,7 @@ def cluster_peri_event(peri_event,n_cluster=2,do_plot=False,fig=None,ax=None,do_
 
 def manual_cluster_peri_event(peri_event,time_window=(-2,0),n_cluster=2,do_plot=False,fig=None,ax=None,do_zscore=False):
     '''
-    quantive based on average within some time window
+    manual cluster based on quantile of average within some time window
     '''
     if do_zscore:
         mean_peri_event = peri_event.mean(axis=0)
@@ -275,6 +275,7 @@ def manual_cluster_peri_event(peri_event,time_window=(-2,0),n_cluster=2,do_plot=
     for i in range(n_cluster):
         peri_event_per_cluster_d[i] = peri_event.loc[temporal_mean_quantile==i]
         peri_event_per_cluster_mean_d[i] = peri_event_per_cluster_d[i].mean(axis=0)
+        print(peri_event_per_cluster_mean_d[i])
     to_return = {'temporal_mean_quantile':temporal_mean_quantile,'temporal_mean':temporal_mean,'peri_event_per_cluster_d':peri_event_per_cluster_d,'peri_event_per_cluster_mean_d':peri_event_per_cluster_mean_d}
     if do_plot:
         for i in range(n_cluster):
