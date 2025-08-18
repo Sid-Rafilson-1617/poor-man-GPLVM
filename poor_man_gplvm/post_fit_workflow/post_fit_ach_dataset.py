@@ -242,7 +242,7 @@ def cluster_peri_event(peri_event,n_cluster=2,do_plot=False,fig=None,ax=None):
     to_return = {'peri_event_cluster_mean_d':peri_event_cluster_mean_d,'peri_event_per_cluster_d':peri_event_per_cluster_d,'kmeans':kmeans}
     if do_plot:
         for i in range(n_cluster):
-            fig,ax = ph.plot_mean_error_plot(peri_event_per_cluster_d[i],mean_axis=0,fig=fig,ax=ax)
+            fig,ax = ph.plot_mean_error_plot(peri_event_per_cluster_d[i],mean_axis=0,fig=fig,ax=ax,color=f'C{i}')
             ax.set_title(f'Cluster {i}')
             ax.set_xlabel('Time (s)')
         return to_return,fig,ax
