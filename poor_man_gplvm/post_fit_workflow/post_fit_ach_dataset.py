@@ -85,7 +85,15 @@ def find_ach_ramp_onset(ach_data,smooth_win=1,height=0.05,do_zscore=True,detrend
     signal_peaks,signal_metadata_peak=scipy.signal.find_peaks(ach_data_smth_for_peak,prominence=0.01)
     signal_valleys,signal_metadata_valley=scipy.signal.find_peaks(-ach_data_smth_for_peak,prominence=0.01)
 
-    slope = ach_data_smth.derivative()
+    # slope = ach_data_smth.derivative()
+    # another idea: just use the difference with some temporal gap, say 1s
+    finite_diff_window_s = 1
+    finite_diff_window = int(finite_diff_window_s / np.median(np.diff(ach_data.t)))
+    extended_data = np.concatenate([ach_data.d,np.zeros(finite_diff_window)])
+    slope = (extended_data[finite_diff_window:] - extended_data[:-finite_diff_window]) / finite_diff_window_s
+    slope = nap.Tsd(d=slope,t=ach_data.t)
+    
+
     peaks,metadata=scipy.signal.find_peaks(slope,height=height)
     peak_heights = metadata['peak_heights']
     peak_heights = nap.Tsd(d=peak_heights,t=slope.t[peaks])
