@@ -518,9 +518,13 @@ def set_two_ticks(axis, xlim=None, ylim=None, do_int=True, apply_to='y'):
     if apply_to in ('y', 'both'):
         y_ticks = _compute_two(ylim, axis.get_ylim)
         axis.set_yticks([y_ticks[0], y_ticks[1]])
+        if ylim is not None:
+            axis.set_ylim(ylim)
     if apply_to in ('x', 'both'):
         x_ticks = _compute_two(xlim, axis.get_xlim)
         axis.set_xticks([x_ticks[0], x_ticks[1]])
+        if xlim is not None:
+            axis.set_xlim(xlim)
     return axis
 
 # New: symmetric ticks around 0 (e.g., [-M, 0, M])
@@ -558,9 +562,13 @@ def set_symmetric_ticks(axis, xlim=None, ylim=None, do_int=True, apply_to='y'):
     if apply_to in ('y', 'both'):
         y_ticks = _compute_three(ylim, axis.get_ylim)
         axis.set_yticks(y_ticks)
+        if ylim is not None:
+            axis.set_ylim(ylim)
     if apply_to in ('x', 'both'):
         x_ticks = _compute_three(xlim, axis.get_xlim)
         axis.set_xticks(x_ticks)
+        if xlim is not None:
+            axis.set_xlim(xlim)
     return axis
 
 # for plotting the distribution of the shuffle data and the data itself
