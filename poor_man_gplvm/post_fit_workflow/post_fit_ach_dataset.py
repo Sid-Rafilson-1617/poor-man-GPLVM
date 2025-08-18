@@ -381,7 +381,7 @@ def get_distance_matrix(mean_feature_d,metric_d={'pv':'correlation'}):
     return dist_d
 
 
-def feature_distance_vs_label_distance_analysis(prep_res,label_intv,ach_onset=None,ach_extend_win=1,feature_key_l=['p_latent','pv'],interval_key_l=['ACh_onset','ripple'],n_shuffles=200,label_distance_threshold=None):
+def feature_distance_vs_label_distance_analysis(prep_res,label_intv,ach_intv=None,ach_onset=None,ach_extend_win=1,feature_key_l=['p_latent','pv'],interval_key_l=['ACh_onset','ripple'],n_shuffles=200,label_distance_threshold=None):
     '''
     ach_onset: Ts, the ACh onset timestamps
     ach_extend_win: int, the window to extend the ACh onset into interval, in second
@@ -392,9 +392,12 @@ def feature_distance_vs_label_distance_analysis(prep_res,label_intv,ach_onset=No
     feature_d = prep_feature_d(prep_res,feature_to_include=feature_key_l)
     interval_d = {}
     if 'ACh_onset' in interval_key_l:
-        assert ach_onset is not None
-        ach_onset_sub = ach_onset.restrict(label_intv)
-        interval_d['ACh_onset'] = nap.IntervalSet(ach_onset_sub.t,ach_onset_sub.t+ach_extend_win)
+        if ach_intv is None:
+            assert ach_onset is not None
+            ach_onset_sub = ach_onset.restrict(label_intv)
+            interval_d['ACh_onset'] = nap.IntervalSet(ach_onset_sub.t,ach_onset_sub.t+ach_extend_win)
+        else:
+            interval_d['ACh_onset'] = ach_intv
     if 'ripple' in interval_key_l:
         if 'is_ripple' in prep_res:
             interval_d['ripple'] = prep_res['is_ripple'].restrict(label_intv)
