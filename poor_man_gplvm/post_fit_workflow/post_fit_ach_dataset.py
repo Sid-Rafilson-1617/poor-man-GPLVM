@@ -300,7 +300,12 @@ def get_mean_feature_in_interval(feature_d,interval_d,ep=None):
     for feat_name,feat in feature_d.items():
         for interval_name,interval in interval_d.items():
             if isinstance(interval,nap.IntervalSet):
-                mean_feature_d[feat_name,interval_name] = feat.restrict(ep).restrict(interval).mean(axis=0)
+                feat_sub = feat.restrict(ep)
+                mean_feat = []
+                for intv in interval:
+                    feat_sub_intv = feat_sub.restrict(intv).mean(axis=0)
+                    mean_feat.append(feat_sub_intv)
+                mean_feature_d[feat_name,interval_name] = nap.TsdFrame(d=mean_feat,t=interval['start'])
             else:
                 mean_feature_d[feat_name,interval_name] = feat[interval.d].restrict(ep)
     return mean_feature_d
