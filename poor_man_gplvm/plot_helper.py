@@ -488,6 +488,7 @@ def set_two_ticks(axis, xlim=None, ylim=None, do_int=True, apply_to='y'):
     apply_to: 'x', 'y', or 'both'
     """
     def _compute_two(lim, getlim):
+        explicit = lim is not None
         if lim is None:
             lim = getlim()
         lo, hi = lim
@@ -498,6 +499,8 @@ def set_two_ticks(axis, xlim=None, ylim=None, do_int=True, apply_to='y'):
                 hi_i = lo_i + 1
             return [lo_i, hi_i]
         else:
+            if explicit:
+                return [lo, hi]
             if lo == hi:
                 eps = 1e-6 if lo == 0 else abs(lo) * 1e-6
                 lo -= eps
@@ -530,6 +533,7 @@ def set_symmetric_ticks(axis, xlim=None, ylim=None, do_int=True, apply_to='y'):
     - apply_to: 'x', 'y', or 'both'
     """
     def _compute_three(lim, getlim):
+        explicit = lim is not None
         if lim is None:
             lim = getlim()
         lo, hi = lim
@@ -540,12 +544,15 @@ def set_symmetric_ticks(axis, xlim=None, ylim=None, do_int=True, apply_to='y'):
             return [-M, 0, M]
         else:
             M = float(min(abs(lo), abs(hi)))
-            # Round to the first distinguishing digit of limit ticks (-M, M)
-            ml, mh = _round_to_first_distinguishing_digit(-M, M)
-            M_r = max(abs(ml), abs(mh))
-            if M_r == 0:
-                eps = 1e-6 if lo == 0 else abs(lo) * 1e-6
-                M_r = eps
+            if explicit:
+                M_r = M
+            else:
+                # Round to the first distinguishing digit of limit ticks (-M, M)
+                ml, mh = _round_to_first_distinguishing_digit(-M, M)
+                M_r = max(abs(ml), abs(mh))
+                if M_r == 0:
+                    eps = 1e-6 if lo == 0 else abs(lo) * 1e-6
+                    M_r = eps
             return [-M_r, 0.0, M_r]
 
     if apply_to in ('y', 'both'):
