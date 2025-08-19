@@ -374,8 +374,8 @@ def test_pre_post_against_shuffle(df,df_shuffle,center=0,test_win=None):
     center: the time of the event, default is 0
     test_win: in second, a smaller window to do the pre post difference test
     '''
-    dres=get_post_pre_diff(df,center=0,test_win=None)
-    dres_shuffle=get_post_pre_diff(df_shuffle,center=0,test_win=None)
+    dres=get_post_pre_diff(df,center=center,test_win=test_win)
+    dres_shuffle=get_post_pre_diff(df_shuffle,center=center,test_win=test_win)
     diff = dres['diff_median']
     diff_shuffle= dres_shuffle['diff']
     p = np.mean(diff >= diff_shuffle)
