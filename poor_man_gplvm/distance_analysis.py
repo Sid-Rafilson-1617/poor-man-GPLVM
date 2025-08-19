@@ -9,6 +9,209 @@ import numpy as np
 from scipy.spatial.distance import cdist
 import statsmodels.api as sm
 
+from scipy.spatial.distance import pdist, squareform
+
+
+def compute_distance_lag(
+    X,
+    *,
+    metric='euclidean',
+    label_d=None,
+    do_plot=False,
+    max_index_lag=None,
+    label_bins=None,
+    bin_count=20,
+    random_state=None,
+    ax=None
+):
+    """
+    Compute pairwise distances for an (n_time x n_feature) matrix, derive laged pairs
+    (index-based and optional label-based), summarize mean/std/sem by lag, and
+    optionally plot distance vs lag with error shading.
+
+    Parameters
+    ----------
+    X : (n_time, n_feature) array_like
+        Observations in time order.
+    metric : str or callable
+        Metric passed to scipy.spatial.distance.pdist.
+    label_d : (n_time,) array_like or None
+        Optional labels aligned to rows of X for label-based lags. If provided,
+        label lag is |label[j] - label[i]| for i<j.
+    do_plot : bool
+        If True, produce a simple plot of distance vs index lag with shaded error.
+        If label_d is provided, also plots distance vs label lag (binned if needed).
+    max_index_lag : int or None
+        If given, restrict summaries/plots to pairs with index_lag <= max_index_lag.
+    label_bins : array_like or None
+        Optional explicit bin edges for label lag aggregation. If None and label_d
+        is provided, bins are chosen automatically when label lag is continuous.
+    bin_count : int
+        Number of bins to use when auto-binning label lag.
+    random_state : int or None
+        Unused currently; kept for API stability if downsampling is added later.
+    ax : matplotlib Axes or None
+        Optional axes to draw the index-lag plot on. If None and do_plot=True,
+        a new figure/axes is created.
+
+    Returns
+    -------
+    dict
+        {
+          'D': (n,n) distance matrix,
+          'pairs_df': DataFrame of upper-tri pairs with columns:
+              ['i','j','dist','index_lag', ('label_lag' if label_d provided)],
+          'by_index_lag': summary DataFrame with ['index_lag','n','mean','std','sem'],
+          'by_label_lag': summary DataFrame or None,
+          'figs': dict with optional matplotlib figures/axes {'index': (fig, ax), 'label': (fig, ax)}
+        }
+    """
+    X = np.asarray(X, dtype=float)
+    if X.ndim != 2:
+        raise ValueError("X must be 2D (n_time, n_feature)")
+
+    # Pairwise distances and square matrix
+    cond_dists = pdist(X, metric=metric)
+    D = squareform(cond_dists)
+
+    n_time = X.shape[0]
+    iu, ju = np.triu_indices(n_time, k=1)
+    dist_vals = D[iu, ju]
+    index_lag = (ju - iu).astype(int)
+
+    data = {
+        'i': iu,
+        'j': ju,
+        'dist': dist_vals,
+        'index_lag': index_lag,
+    }
+
+    by_label_lag = None
+    label_vals = None
+    if label_d is not None:
+        label_vals = np.asarray(label_d)
+        if label_vals.shape[0] != n_time:
+            raise ValueError("label_d must have length n_time")
+        label_lag = np.abs(label_vals[ju] - label_vals[iu])
+        data['label_lag'] = label_lag
+
+    pairs_df = pd.DataFrame(data)
+
+    if max_index_lag is not None:
+        pairs_df = pairs_df[pairs_df['index_lag'] <= int(max_index_lag)].copy()
+
+    # Summaries by index lag
+    by_index = (
+        pairs_df.groupby('index_lag')['dist']
+        .agg(n='count', mean='mean', std='std')
+        .reset_index()
+    )
+    by_index['sem'] = by_index['std'] / np.sqrt(by_index['n'].where(by_index['n'] > 0, np.nan))
+
+    # Summaries by label lag, if provided
+    if label_d is not None:
+        ll = pairs_df['label_lag'].to_numpy()
+        # Decide whether to bin: if many unique values, bin; else group directly
+        unique_vals = np.unique(ll[np.isfinite(ll)])
+        if label_bins is not None:
+            bins = np.asarray(label_bins, dtype=float)
+            labels = 0.5 * (bins[:-1] + bins[1:])
+            cats = pd.cut(ll, bins=bins, include_lowest=True)
+            tmp = pairs_df.copy()
+            tmp['label_lag_bin'] = cats
+            by_label = (
+                tmp.groupby('label_lag_bin')['dist']
+                .agg(n='count', mean='mean', std='std')
+                .reset_index()
+            )
+            # bin centers for plotting
+            centers = by_label['label_lag_bin'].apply(lambda iv: iv.mid if pd.notnull(iv) else np.nan)
+            by_label.insert(1, 'label_lag', centers.astype(float))
+        elif unique_vals.size <= 50:
+            by_label = (
+                pairs_df.groupby('label_lag')['dist']
+                .agg(n='count', mean='mean', std='std')
+                .reset_index()
+            )
+        else:
+            # quantile bins for continuous label lag
+            qs = np.linspace(0, 1, bin_count + 1)
+            bins = np.unique(np.quantile(ll, qs))
+            if bins.size < 2:
+                # degenerate; fallback to direct grouping
+                by_label = (
+                    pairs_df.groupby('label_lag')['dist']
+                    .agg(n='count', mean='mean', std='std')
+                    .reset_index()
+                )
+            else:
+                cats = pd.cut(ll, bins=bins, include_lowest=True)
+                tmp = pairs_df.copy()
+                tmp['label_lag_bin'] = cats
+                by_label = (
+                    tmp.groupby('label_lag_bin')['dist']
+                    .agg(n='count', mean='mean', std='std')
+                    .reset_index()
+                )
+                centers = by_label['label_lag_bin'].apply(lambda iv: iv.mid if pd.notnull(iv) else np.nan)
+                by_label.insert(1, 'label_lag', centers.astype(float))
+
+        by_label['sem'] = by_label['std'] / np.sqrt(by_label['n'].where(by_label['n'] > 0, np.nan))
+        by_label_lag = by_label
+
+    figs = {}
+    if do_plot:
+        # Lazy imports so the module does not require plotting libs unless used
+        import matplotlib.pyplot as plt  # noqa: WPS433
+        try:
+            import seaborn as sns  # noqa: WPS433
+            _ = sns.set_style('whitegrid')
+        except Exception:
+            pass
+
+        # Plot index-lag curve
+        if ax is None:
+            fig_idx, ax_idx = plt.subplots(1, 1, figsize=(6, 4))
+        else:
+            fig_idx = ax.figure
+            ax_idx = ax
+        x = by_index['index_lag'].to_numpy()
+        m = by_index['mean'].to_numpy()
+        e = by_index['sem'].to_numpy()
+        ax_idx.plot(x, m, color='C0', label='Index lag')
+        ax_idx.fill_between(x, m - e, m + e, color='C0', alpha=0.2)
+        ax_idx.set_xlabel('Index lag')
+        ax_idx.set_ylabel('Distance')
+        ax_idx.set_title('Distance vs index lag')
+        ax_idx.legend(loc='best')
+        figs['index'] = (fig_idx, ax_idx)
+
+        # Plot label-lag curve if available
+        if by_label_lag is not None:
+            fig_lab, ax_lab = plt.subplots(1, 1, figsize=(6, 4))
+            if 'label_lag' in by_label_lag.columns:
+                x2 = by_label_lag['label_lag'].to_numpy()
+            else:
+                x2 = by_label_lag['label_lag'].index.to_numpy()
+            m2 = by_label_lag['mean'].to_numpy()
+            e2 = by_label_lag['sem'].to_numpy()
+            ax_lab.plot(x2, m2, color='C1', label='Label lag')
+            ax_lab.fill_between(x2, m2 - e2, m2 + e2, color='C1', alpha=0.2)
+            ax_lab.set_xlabel('Label lag')
+            ax_lab.set_ylabel('Distance')
+            ax_lab.set_title('Distance vs label lag')
+            ax_lab.legend(loc='best')
+            figs['label'] = (fig_lab, ax_lab)
+
+    return {
+        'D': D,
+        'pairs_df': pairs_df,
+        'by_index_lag': by_index,
+        'by_label_lag': by_label_lag,
+        'figs': figs,
+    }
+
+
 def w1_cdf_distance_matrix(prob_mat, bin_edges=None, normalize=False):
     """
     Compute the 1D Wasserstein-1 (Earth Mover's) distance matrix between rows
