@@ -581,3 +581,127 @@ def shuffle_test_distance_vs_label(
         bin_edges=edges
     )
 
+
+
+
+import numpy as np
+
+def interpolate_stacks(mats, *, n_point=10, ddof=0):
+    """
+    Interpolate a list of time×feature matrices onto a common grid in [0, 1].
+
+    Parameters
+    ----------
+    mats : list of np.ndarray
+        Each array has shape (n_time_i, n_feature). The time axis is assumed
+        to be sampled at np.linspace(0, 1, n_time_i, endpoint=True).
+        All matrices must have the same n_feature.
+    n_point : int
+        Number of target points on the common grid in [0, 1].
+    ddof : int, optional (default=0)
+        Delta degrees of freedom for std across the list (0 = population std,
+        1 = sample std).
+
+    Returns
+    -------
+    out : dict
+        {
+          "grid": np.ndarray of shape (n_point,),          # the common grid
+          "stack": np.ndarray of shape (n_list, n_point, n_feature),
+          "mean": np.ndarray of shape (n_point, n_feature),
+          "std":  np.ndarray of shape (n_point, n_feature),
+        }
+    """
+    if not mats:
+        raise ValueError("`mats` must be a non-empty list of 2D arrays.")
+
+    # Basic validation and feature dimension check
+    first = np.asarray(mats[0])
+    if first.ndim != 2:
+        raise ValueError("Each item must be a 2D array (n_time × n_feature).")
+    n_feature = first.shape[1]
+
+    for i, M in enumerate(mats):
+        M = np.asarray(M)
+        if M.ndim != 2:
+            raise ValueError(f"Item {i} is not 2D.")
+        if M.shape[1] != n_feature:
+            raise ValueError(
+                f"Item {i} has n_feature={M.shape[1]} != {n_feature} (from item 0)."
+            )
+
+    n_list = len(mats)
+    x_new = np.linspace(0.0, 1.0, n_point, endpoint=True)
+
+    stack = np.empty((n_list, n_point, n_feature), dtype=np.float64)
+
+    # Helper: robust 1D interpolation that tolerates NaNs by ignoring them
+    def _interp_nan_safe(x_old, y_old, x_new):
+        valid = np.isfinite(y_old)
+        if not np.any(valid):
+            return np.full_like(x_new, np.nan, dtype=float)
+        return np.interp(x_new, x_old[valid], y_old[valid])
+
+    # Interpolate each matrix to the common grid
+    for i, M in enumerate(mats):
+        M = np.asarray(M, dtype=float)
+        n_time_i = M.shape[0]
+        x_old = np.linspace(0.0, 1.0, n_time_i, endpoint=True)
+
+        # Column-wise interpolation (one feature at a time)
+        for j in range(n_feature):
+            stack[i, :, j] = _interp_nan_safe(x_old, M[:, j], x_new)
+
+    mean = np.nanmean(stack, axis=0)
+    std = np.nanstd(stack, axis=0, ddof=ddof)
+
+    return {"grid": x_new, "stack": stack, "mean": mean, "std": std}
+
+
+def interpolate_compute_dist_mat(mats, *, n_point=10, metric='euclidean', ddof=0):
+    """
+    Interpolate each matrix onto a common time grid, compute the pairwise
+    distance matrix (over time points) for each interpolated matrix using
+    ``compute_distance_lag``, and aggregate the list into mean and std.
+
+    Parameters
+    ----------
+    mats : list of array_like
+        Each element has shape (n_time_i, n_feature). All must share the same
+        number of features. Time axis is assumed to span [0, 1].
+    n_point : int, default=10
+        Number of points on the common interpolation grid in [0, 1].
+    metric : str or callable, default='euclidean'
+        Distance metric passed through to ``compute_distance_lag``/``pdist``.
+    ddof : int, default=0
+        Delta degrees of freedom used for the standard deviation across the list
+        of distance matrices.
+
+    Returns
+    -------
+    dict
+        {
+          "D_list": list of (n_point, n_point) arrays,
+          "D_mean": (n_point, n_point) array,
+          "D_std":  (n_point, n_point) array,
+        }
+    """
+    interp = interpolate_stacks(mats, n_point=n_point, ddof=ddof)
+    stack = interp["stack"]  # (n_list, n_point, n_feature)
+
+    D_list = []
+    for i in range(stack.shape[0]):
+        # For each interpolated matrix (time × feature), compute distance over time
+        res = compute_distance_lag(stack[i], metric=metric, do_plot=False)
+        D_list.append(res["D"])  # (n_point, n_point)
+
+    if len(D_list) == 0:
+        # Should not happen due to upstream validation, but handle defensively
+        D_mean = np.full((n_point, n_point), np.nan)
+        D_std = np.full((n_point, n_point), np.nan)
+    else:
+        D_stack = np.stack(D_list, axis=0)  # (n_list, n_point, n_point)
+        D_mean = np.nanmean(D_stack, axis=0)
+        D_std = np.nanstd(D_stack, axis=0, ddof=ddof)
+
+    return {"D_list": D_list, "D_mean": D_mean, "D_std": D_std}
