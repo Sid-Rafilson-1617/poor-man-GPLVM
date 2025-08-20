@@ -690,7 +690,7 @@ def latent_cluster_vs_timing_regression(cluster_label_l,event_ts,nrem_intv):
     to_predict = cluster_label_l[1:]
 
     reg_df = {'event_phase_in_intv':event_phase_in_intv_each_event[1:],'intv_phase_in_session':intv_phase_in_session_each_event[1:],'previous_label':previous_label_each_event,'to_predict':to_predict}
-    reg_res = smf.mnlogit('to_predict ~ event_phase_in_intv + intv_phase_in_session + previous_label',data=reg_df).fit()
+    reg_res = smf.mnlogit('to_predict ~ event_phase_in_intv + intv_phase_in_session + C(previous_label)',data=reg_df).fit()
     print(reg_res.summary())
     res= {'reg_res':reg_res,'reg_df':reg_df}
     return res
