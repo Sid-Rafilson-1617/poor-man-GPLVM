@@ -464,7 +464,8 @@ def feature_distance_vs_label_distance_analysis(prep_res,label_intv,ach_intv=Non
             print('ripple interval not found, skipping')
     mean_feature_d = get_mean_feature_in_interval(feature_d,interval_d)
     for k,v in mean_feature_d.items():
-        assert np.isnan(label_intv.in_interval(v)).sum()==0
+        mean_feature_d[k] = mean_feature_d[k].restrict(label_intv)
+        assert np.isnan(mean_feature_d[k]).sum()==0
     
     dist_d = get_distance_matrix(mean_feature_d)
     
