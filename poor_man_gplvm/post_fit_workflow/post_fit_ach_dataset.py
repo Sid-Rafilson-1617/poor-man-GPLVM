@@ -566,7 +566,7 @@ def gather_feature_shuffle_across_sessions(analysis_res_d_allsess,prep_fig_save_
     to_shift_d={} # (feature_key,event_key): n_sess
     key_l = []
     for analysis_res_d in analysis_res_d_allsess:
-        key_l.append(list(analysis_res_d.keys()))
+        key_l.extend(list(analysis_res_d.keys()))
     key_l = list(set(key_l))
     
     for kk in key_l:
