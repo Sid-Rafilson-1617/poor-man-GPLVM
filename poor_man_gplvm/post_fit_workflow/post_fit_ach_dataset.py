@@ -20,6 +20,7 @@ need:
             - can do one for time too
 '''
 
+from cmath import phase
 import numpy as np
 import scipy
 import pynapple as nap
@@ -662,3 +663,31 @@ def ach_vs_dynamics_tuning_all_sessions(prep_res_l,dynamics_label_l=['Continuous
     
 
 #========= latent anlaysis, not included in main yet=================#
+import statsmodels.formula.api as smf
+def latent_cluster_vs_timing_regression(cluster_label_l,event_ts,nrem_intv):
+    '''
+    given cluster indices for all the ACh bouts (as events)
+    for each time point (of an event) within a NREM interval, need the phase within the interval, the phase of the interval within the recording, using index, and the previous event cluster
+    predict the cluster 
+    '''
+    which_nrem_intv = nrem_intv.in_interval(event_ts)
+    assert np.nan(which_nrem_intv).sum()==0 # all events are in nrem_intv, no nan here
+    duration = nrem_intv['end']-nrem_intv['start']
+    # for each event, need duration of that interval, and it's time minus the start of the interval
+    duration_each_event= duration[which_nrem_intv]
+    time_in_intv_each_event = event_ts.t - nrem_intv['start'][which_nrem_intv]
+    event_phase_in_intv_each_event = time_in_intv_each_event/duration_each_event
+    intv_phase_in_session_each_event = which_nrem_intv / nrem_intv.shape[0]
+    
+    previous_label_each_event =  cluster_label_l[:-1]
+    to_predict = cluster_label_l[1:]
+
+    reg_df = {'event_phase_in_intv':event_phase_in_intv_each_event[1:],'intv_phase_in_session':intv_phase_in_session_each_event[1:],'previous_label':previous_label_each_event,'to_predict':to_predict}
+    reg_res = smf.mnlogit('to_predict ~ event_phase_in_intv + intv_phase_in_session + previous_label',data=reg_df).fit()
+    print(reg_res.summary())
+    res= {'reg_res':reg_res,'reg_df':reg_df}
+    return res
+
+
+
+
