@@ -10,6 +10,7 @@ import pandas as pd
 
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from scipy.stats import wilcoxon
 
 plt.rcParams['font.family'] = 'sans-serif'
 plt.rcParams['svg.fonttype'] = 'none'
@@ -604,3 +605,189 @@ def subplots_wrapper(nplots,return_axs=True,basewidth=6,baseheight=4,figsize=Non
     else:
         fig = plt.figure(figsize=figsize)
         return fig, nrows, ncols
+
+
+def plot_paired_line_median(
+    df: pd.DataFrame,
+    ticklabels: list | tuple | None = None,
+    line_colors: list | tuple | str | None = None,
+    line_styles: list | tuple | str | None = '-',
+    line_widths: list | tuple | float | None = 1.5,
+    line_alphas: list | tuple | float | None = 0.8,
+    *,
+    bar_color: str = '0.6',
+    bar_edgecolor: str = 'k',
+    bar_alpha: float = 0.5,
+    bar_width: float = 0.5,
+    show_sig: bool = True,
+    sig_level: float = 0.05,
+    alternative: str = 'two-sided',  # 'two-sided', 'greater', or 'less'
+    fig=None,
+    ax=None,
+    figsize=(3, 3),
+    text_fontsize: int = 10,
+):
+    """
+    Plot paired data (n x 2 DataFrame): each row as a line connecting the two columns,
+    and a bar for the median of each column. Also performs Wilcoxon signed-rank test,
+    computes a rank-biserial effect size, annotates significance stars if significant,
+    and writes p-value and effect size on the figure.
+
+    Parameters
+    - df: n x 2 pandas DataFrame.
+    - ticklabels: optional [label_col1, label_col2]; defaults to DataFrame column names.
+    - line_colors, line_styles, line_widths, line_alphas: styling for connecting lines.
+      Can be a single value (applied to all lines) or a list of length n. If colors is None,
+      Matplotlib's default color cycle will be used for each line.
+    - bar_color, bar_edgecolor, bar_alpha, bar_width: styling for the median bars.
+    - show_sig: if True, draw significance bracket and stars when p < sig_level.
+    - sig_level: alpha threshold for significance.
+    - alternative: passed to scipy.stats.wilcoxon.
+    - fig, ax, figsize: Matplotlib figure/axes or figure size if creating new.
+    - text_fontsize: font size for the p-value/effect-size annotation.
+
+    Returns
+    - fig, ax, result_dict
+      result_dict contains: { 'n': int, 'statistic': float, 'pvalue': float,
+                              'effect_size_rb': float, 'median_col1': float,
+                              'median_col2': float, 'median_diff': float,
+                              'stars': str }
+    """
+    if not isinstance(df, pd.DataFrame) or df.shape[1] != 2:
+        raise ValueError('df must be a pandas DataFrame with exactly 2 columns')
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+
+    # X positions for the two conditions
+    x_positions = np.array([0.0, 1.0])
+
+    # Tick labels
+    if ticklabels is None:
+        ticklabels = list(df.columns)
+    if len(ticklabels) != 2:
+        raise ValueError('ticklabels must have length 2')
+
+    # Values and medians
+    values = df.values.astype(float)
+    num_rows = values.shape[0]
+    medians = np.nanmedian(values, axis=0)
+
+    # Helper: normalize styling input to per-row list
+    def _to_list(value, default):
+        if value is None:
+            return [default] * num_rows
+        if isinstance(value, (list, tuple, np.ndarray, pd.Series)):
+            if len(value) == 0:
+                return [default] * num_rows
+            if len(value) == 1:
+                return [value[0]] * num_rows
+            if len(value) != num_rows:
+                raise ValueError('When providing per-line styling, length must equal number of rows in df')
+            return list(value)
+        return [value] * num_rows
+
+    # Build per-line styles
+    color_list = None if line_colors is None else _to_list(line_colors, None)
+    style_list = _to_list(line_styles, '-')
+    width_list = _to_list(line_widths, 1.5)
+    alpha_list = _to_list(line_alphas, 0.8)
+
+    # Draw median bars first (behind lines)
+    ax.bar(x_positions, medians, color=bar_color, edgecolor=bar_edgecolor,
+           alpha=bar_alpha, width=bar_width, zorder=1)
+
+    # Draw paired lines for each row
+    for i in range(num_rows):
+        # When colors are None, let Matplotlib auto-cycle colors
+        color_i = None if color_list is None else color_list[i]
+        ax.plot(x_positions, values[i, :],
+                color=color_i,
+                linestyle=style_list[i],
+                linewidth=width_list[i],
+                alpha=alpha_list[i],
+                zorder=2)
+
+    # Axes cosmetics
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(ticklabels)
+
+    # Compute y-limits with margin to make room for stars text
+    y_min = float(np.nanmin(values)) if np.isfinite(np.nanmin(values)) else 0.0
+    y_max = float(np.nanmax(values)) if np.isfinite(np.nanmax(values)) else 1.0
+    if not np.isfinite(y_min) or not np.isfinite(y_max) or y_min == y_max:
+        y_min, y_max = (0.0, 1.0)
+    y_range = y_max - y_min
+    top_margin = 0.18 * y_range
+    bottom_margin = 0.05 * y_range
+    ax.set_ylim(y_min - bottom_margin, y_max + top_margin)
+
+    # Wilcoxon signed-rank test (drop NaNs and zeros for 'wilcox' zero_method)
+    x = df.iloc[:, 0].to_numpy(dtype=float)
+    y = df.iloc[:, 1].to_numpy(dtype=float)
+    mask_finite = np.isfinite(x) & np.isfinite(y)
+    x = x[mask_finite]
+    y = y[mask_finite]
+    diffs = y - x
+    nonzero_mask = diffs != 0
+    x_nz = x[nonzero_mask]
+    y_nz = y[nonzero_mask]
+    n_eff = int(len(x_nz))
+
+    if n_eff >= 1:
+        res = wilcoxon(x_nz, y_nz, alternative=alternative, zero_method='wilcox', correction=False, mode='auto')
+        statistic = float(res.statistic)
+        pvalue = float(res.pvalue)
+        # Rank-biserial correlation for Wilcoxon: r_rb = 2*W+ / (n(n+1)) - 1
+        W_total = n_eff * (n_eff + 1) / 2.0
+        effect_size_rb = 2.0 * statistic / W_total - 1.0
+    else:
+        statistic = np.nan
+        pvalue = 1.0
+        effect_size_rb = np.nan
+
+    # Stars for significance
+    def _p_to_stars(p):
+        if p < 1e-4:
+            return '****'
+        if p < 1e-3:
+            return '***'
+        if p < 1e-2:
+            return '**'
+        if p < 5e-2:
+            return '*'
+        return ''
+
+    stars = _p_to_stars(pvalue)
+
+    # Draw bracket and stars if significant
+    if show_sig and pvalue < sig_level:
+        bracket_y = y_max + 0.08 * y_range
+        tick_h = 0.03 * y_range
+        # vertical ticks
+        ax.plot([x_positions[0], x_positions[0]], [bracket_y - tick_h, bracket_y], color='k', linewidth=1, zorder=3)
+        ax.plot([x_positions[1], x_positions[1]], [bracket_y - tick_h, bracket_y], color='k', linewidth=1, zorder=3)
+        # horizontal line
+        ax.plot([x_positions[0], x_positions[1]], [bracket_y, bracket_y], color='k', linewidth=1, zorder=3)
+        # stars text centered
+        ax.text(np.mean(x_positions), bracket_y + 0.01 * y_range, stars,
+                ha='center', va='bottom', fontsize=text_fontsize, color='k')
+
+    # Text annotation for p-value and effect size in axes coords (top-left)
+    median_diff = float(np.nanmedian(df.iloc[:, 1] - df.iloc[:, 0]))
+    text_str = f"Wilcoxon p={pvalue:.3g}, r_rb={effect_size_rb:.2f}, n={n_eff}"
+    ax.text(0.02, 0.98, text_str, transform=ax.transAxes, ha='left', va='top', fontsize=text_fontsize)
+
+    result = {
+        'n': n_eff,
+        'statistic': statistic,
+        'pvalue': pvalue,
+        'effect_size_rb': effect_size_rb,
+        'median_col1': float(medians[0]),
+        'median_col2': float(medians[1]),
+        'median_diff': median_diff,
+        'stars': stars,
+    }
+
+    return fig, ax, result
+

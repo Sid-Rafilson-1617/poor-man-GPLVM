@@ -10,7 +10,7 @@ import scipy.ndimage
 
 def get_posterior_weighted_average(feature,posterior):
     '''
-    get the posterior weighted average of the feature
+    get the posterior weighted average of the feature (normalized by posterior occupancy)
     feature: nap.Tsd or nap.TsdFrame, the feature to get the posterior weighted average of
     posterior: nap.TsdFrame, the posterior of either latent or dynamics
 
