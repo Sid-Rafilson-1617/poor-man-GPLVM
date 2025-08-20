@@ -486,7 +486,7 @@ def within_nrem_interval_ach_induced_latent_ramp_analysis():
 # ====all together====#
 def main(data_path=None,fit_res_path=None,prep_res=None,
     ach_ramp_kwargs = {'height':0.05,'detrend_cutoff':None,'smooth_win':1,'finite_diff_window_s':1},
-    event_triggered_analysis_kwargs = {'n_shuffle':50,'minmax':4,'do_zscore':False,'test_win':2,'do_plot':True},
+    event_triggered_analysis_kwargs = {'n_shuffle':100,'minmax':4,'do_zscore':False,'test_win':2,'do_plot':True},
     res_data_save_path = None,
     res_fig_save_path = None,
 ):
