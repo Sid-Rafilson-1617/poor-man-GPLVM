@@ -503,15 +503,20 @@ def main(data_path=None,fit_res_path=None,prep_res=None,
     sleep_state_index = prep_res['sleep_state_index']
     if 'fluo_data' in prep_res:
         has_ach=True
-        has_stim=False
         ach = prep_res['fluo_data']['ACh']
         ach_onset_res=find_ach_ramp_onset(ach,**ach_ramp_kwargs)
-    else:
-        has_ach=False
+        ach_ramp_onset = ach_onset_res['ach_ramp_onset']
+    if 'is_stim' in prep_res:
         has_stim=True
         is_stim = prep_res['is_stim']
-        ach_ramp_intv = is_stim.threshold(0.5).time_support
-        ach_onset_res = {'ach_ramp_onset':nap.Ts(t=ach_ramp_intv['start'])}
+        stim_intv = is_stim.threshold(0.5).time_support
+        stim_onset = nap.Ts(t=stim_intv['start'])
+    
+    if has_ach and is_stim:
+        not_stim_intv=ach_ramp_onset.time_support.set_diff(stim_intv) # ach ramp that is not in stim intervals
+        ach_ramp_onset = ach_ramp_onset.restrict(not_stim_intv)
+        
+        
 
     # prepare features
     if has_ach:
@@ -523,11 +528,11 @@ def main(data_path=None,fit_res_path=None,prep_res=None,
 
     # prepare event timestamps
     sleep_state_intv=turn_sleep_state_tsd_to_interval(sleep_state_index,)
-    event_ts = ach_onset_res['ach_ramp_onset']
+    event_ts_d = {}
     if has_ach:
-        event_ts_d = {'ACh_onset':event_ts}
-    else:
-        event_ts_d = {'stim_onset':event_ts}
+        event_ts_d = {'ACh_onset':ach_ramp_onset}
+    if has_stim:
+        event_ts_d = {'stim_onset':stim_onset}
     event_ts_by_sleep=segregate_event_ts_by_sleep_state(event_ts_d,sleep_state_intv)
 
     # do event triggered analysis
