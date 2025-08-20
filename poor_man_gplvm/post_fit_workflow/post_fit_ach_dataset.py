@@ -513,7 +513,7 @@ def main(data_path=None,fit_res_path=None,prep_res=None,
         stim_intv = is_stim.threshold(0.5).time_support
         stim_onset = nap.Ts(t=stim_intv['start'])
     
-    if has_ach and is_stim:
+    if has_ach and has_stim:
         not_stim_intv=ach_ramp_onset.time_support.set_diff(stim_intv) # ach ramp that is not in stim intervals
         ach_ramp_onset = ach_ramp_onset.restrict(not_stim_intv)
         
