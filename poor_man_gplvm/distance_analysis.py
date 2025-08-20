@@ -705,3 +705,84 @@ def interpolate_compute_dist_mat(mats, *, n_point=10, metric='euclidean', ddof=0
         D_std = np.nanstd(D_stack, axis=0, ddof=ddof)
 
     return {"D_list": D_list, "D_mean": D_mean, "D_std": D_std}
+
+import numpy as np
+from typing import Sequence, Iterable, Tuple, Dict, List, Optional
+
+def labels_to_transition_matrix(
+    labels: Sequence,
+    mode: str = "frame",                 # "frame" or "segment"
+    exclude: Optional[Iterable] = None,  # e.g., {-1} to drop noise
+    smoothing: float = 0.0,              # Laplace add-α smoothing
+    state_order: str = "sorted"          # "sorted" or "appearance"
+) -> Tuple[np.ndarray, List]:
+    """
+    Compute empirical transition probabilities P[i,j] = Pr(s_{t+1}=j | s_t=i)
+    from a sequence of cluster labels.
+
+    Parameters
+    ----------
+    labels : sequence of hashables (ints/str)
+    mode : "frame" or "segment"
+        - "frame": count transitions for every adjacent pair
+        - "segment": collapse consecutive identical labels first
+    exclude : iterable of labels to drop entirely (e.g., {-1})
+    smoothing : float
+        Laplace add-α smoothing to counts before row-normalization.
+        Set to 0.0 to avoid any smoothing.
+    state_order : "sorted" or "appearance"
+        Controls the row/column order of states in the returned matrix.
+
+    Returns
+    -------
+    P : (K, K) ndarray
+        Row-stochastic transition matrix.
+    states : list
+        The state labels corresponding to rows/cols of P.
+    """
+    arr = np.asarray(labels)
+
+    # Drop excluded labels (e.g., noise = -1)
+    if exclude is not None:
+        mask = ~np.isin(arr, list(exclude))
+        arr = arr[mask]
+
+    # Not enough data?
+    if arr.size == 0:
+        return np.zeros((0, 0), dtype=float), []
+    if mode not in {"frame", "segment"}:
+        raise ValueError("mode must be 'frame' or 'segment'")
+
+    # Segment mode: run-length encode to unique blocks
+    if mode == "segment":
+        keep = np.r_[True, arr[1:] != arr[:-1]]
+        arr = arr[keep]
+
+    # States and index mapping
+    if state_order == "appearance":
+        # preserve first-appearance order
+        seen, states = set(), []
+        for s in arr:
+            if s not in seen:
+                seen.add(s); states.append(s)
+    else:  # "sorted"
+        states = sorted(set(arr.tolist()))
+    idx = {s: i for i, s in enumerate(states)}
+    K = len(states)
+
+    # Count transitions
+    counts = np.zeros((K, K), dtype=float)
+    for a, b in zip(arr[:-1], arr[1:]):
+        i, j = idx[a], idx[b]
+        counts[i, j] += 1.0
+
+    # Laplace smoothing (optional)
+    if smoothing > 0.0:
+        counts = counts + smoothing
+
+    # Row-normalize to probabilities
+    row_sums = counts.sum(axis=1, keepdims=True)
+    # avoid divide-by-zero (rows with no outgoing transitions)
+    P = np.divide(counts, row_sums, out=np.zeros_like(counts), where=row_sums > 0)
+
+    return P, states
