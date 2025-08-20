@@ -8,6 +8,27 @@ import scipy.stats
 import tqdm
 import scipy.ndimage
 
+def get_posterior_weighted_average(feature,posterior):
+    '''
+    get the posterior weighted average of the feature
+    feature: nap.Tsd or nap.TsdFrame, the feature to get the posterior weighted average of
+    posterior: nap.TsdFrame, the posterior of either latent or dynamics
+
+    return: pd.Series or pd.DataFrame, the posterior weighted average of the feature
+    '''
+    time_support = feature.time_support.union(posterior.time_support)
+    feature = feature.restrict(time_support)
+    posterior = posterior.restrict(time_support) # n_time x n_latent / dynamics
+    feature_aligned = feature.interpolate(posterior) # n_time x n_feature/None
+    if feature_aligned.d.ndim==1:
+        pwa = (posterior.d * feature_aligned.d).sum(axis=0) # n_latent/dynamics
+        pwa = pd.Series(pwa,index=posterior.columns)
+    else:
+        pwa = np.einsum('tp,tf->pf',posterior.d,feature_aligned.d) # n_latent/dynamics x n_feature
+        pwa = pd.DataFrame(pwa,index=posterior.columns,columns=feature_aligned.columns)
+
+    return pwa
+
 def get_state_interval(p_l,p_thresh=0.8, merge_thresh=1,duration_thresh=2,):
     '''
     get the state interval from the posterior, by thresholding, get intervals, merge, filter for duration
