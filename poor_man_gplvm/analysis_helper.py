@@ -21,10 +21,10 @@ def get_posterior_weighted_average(feature,posterior):
     posterior = posterior.restrict(time_support) # n_time x n_latent / dynamics
     feature_aligned = feature.interpolate(posterior) # n_time x n_feature/None
     if feature_aligned.d.ndim==1:
-        pwa = (posterior.d * feature_aligned.d[:,None]).sum(axis=0) # n_latent/dynamics
+        pwa = (posterior.d * feature_aligned.d[:,None]).sum(axis=0) / posterior.d.sum(axis=0)# n_latent/dynamics
         pwa = pd.Series(pwa,index=posterior.columns)
     else:
-        pwa = np.einsum('tp,tf->pf',posterior.d,feature_aligned.d) # n_latent/dynamics x n_feature
+        pwa = np.einsum('tp,tf->pf',posterior.d,feature_aligned.d) / posterior.d.sum(axis=0)[:,None] # n_latent/dynamics x n_feature
         pwa = pd.DataFrame(pwa,index=posterior.columns,columns=feature_aligned.columns)
 
     return pwa
