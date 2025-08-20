@@ -495,7 +495,8 @@ def main(data_path=None,fit_res_path=None,prep_res=None,
     '''
     save_path: convention: {session folder}/py_data/post_fit_quantification/ or {session folder}/py_figure/post_fit_quantification/
     '''
-    
+    has_ach=False
+    has_stim=False
     # load data and fit res
     if prep_res is None:
         assert data_path is not None and fit_res_path is not None
