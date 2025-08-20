@@ -296,7 +296,8 @@ def prep_feature_d(prep_res,consec_pv_dist_metric='correlation',continuous_dynam
     prepare the features used for peri event analysis
     This function is updated when we care about different features
     '''
-    ach = prep_res['fluo_data']['ACh']
+    
+    
     spike_mat_sub = prep_res['spike_mat_sub']
     pop_fr = spike_mat_sub.mean(axis=1) / np.median(np.diff(spike_mat_sub.t))
     consec_pv_dist=ah.get_consecutive_pv_distance(spike_mat_sub,metric=consec_pv_dist_metric)
@@ -306,6 +307,7 @@ def prep_feature_d(prep_res,consec_pv_dist_metric='correlation',continuous_dynam
     
     feature_d = {}
     if 'ach' in feature_to_include:
+        ach = prep_res['fluo_data']['ACh']
         feature_d['ach'] = ach
     if 'pop_fr' in feature_to_include:
         feature_d['pop_fr'] = pop_fr
