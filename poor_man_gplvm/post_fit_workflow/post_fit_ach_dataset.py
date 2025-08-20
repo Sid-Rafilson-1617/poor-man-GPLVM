@@ -633,7 +633,7 @@ def gather_feature_shuffle_across_sessions(analysis_res_d_allsess,prep_fig_save_
 
 
 # simple first order ach vs dynamics tuning analysis
-def ach_vs_dynamics_tuning_all_sessions(prep_res_l,dynamics_label_l=['Continuous','Jump']):
+def ach_vs_dynamics_tuning_all_sessions(prep_res_l,dynamics_label_l=['Continuous','Jump'],do_plot=True,figfn = 'ACh_tuning_to_dynamics',fig_save_dir=None,alternative='greater',text_coord=(0.5,0.8),figsize=(2,2),**kwargs):
     '''
     prep_res_l: list of prep_res
 
@@ -648,5 +648,16 @@ def ach_vs_dynamics_tuning_all_sessions(prep_res_l,dynamics_label_l=['Continuous
         ach_vs_dynamics_l.append(ach_vs_dynamics)
     ach_vs_dynamics_l=pd.DataFrame(ach_vs_dynamics_l)
     ach_vs_dynamics_l.columns=dynamics_label_l
-    return ach_vs_dynamics_l
+
+    if do_plot:
+        fig,ax,test_res_ach_vs_dynamics=ph.plot_paired_line_median(ach_vs_dynamics_l,alternative=alternative,text_coord=text_coord,figsize=figsize,**kwargs)
+        ax.set_ylabel('ACh (dF/F)')
+        ax.set_title('Tuning to dynamics')
+        if fig_save_dir is not None:
+            ph.save_fig(fig,figfn,fig_save_dir)
+        else:
+            return ach_vs_dynamics_l,fig,ax,test_res_ach_vs_dynamics
+    else:
+        return ach_vs_dynamics_l
+    
 
