@@ -568,8 +568,9 @@ def gather_feature_shuffle_across_sessions(analysis_res_d_allsess,prep_fig_save_
         all_feature_allsess[kk] = []
         all_shuffle_allsess[kk] = []
         for analysis_res_d in analysis_res_d_allsess:
-            feature_mean = analysis_res_d[kk]['feature'].mean(axis=0)
-            shuffle_mean = analysis_res_d[kk]['shuffle']
+            if kk in analysis_res_d:
+                feature_mean = analysis_res_d[kk]['feature'].mean(axis=0)
+                shuffle_mean = analysis_res_d[kk]['shuffle']
             all_feature_allsess[kk].append(feature_mean)
             all_shuffle_allsess[kk].append(shuffle_mean)
         
