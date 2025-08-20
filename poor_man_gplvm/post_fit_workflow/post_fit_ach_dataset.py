@@ -630,3 +630,23 @@ def gather_feature_shuffle_across_sessions(analysis_res_d_allsess,prep_fig_save_
 
     res = {'all_feature_allsess':all_feature_allsess,'all_shuffle_allsess':all_shuffle_allsess,'to_shift_d':to_shift_d,'test_res_d':test_res_d,'fig_d':fig_d}
     return res
+
+
+# simple first order ach vs dynamics tuning analysis
+def ach_vs_dynamics_tuning_all_sessions(prep_res_l,dynamics_label_l=['Continuous','Jump']):
+    '''
+    prep_res_l: list of prep_res
+
+    ach_vs_dynamics_l: n_session x n_dynamics
+    dynamics_label_l: list of dynamics label
+    '''
+    ach_vs_dynamics_l = []
+    for prep_res in prep_res_l:
+        ach = prep_res['fluo_data']['ACh']
+        posterior_dynamics_marg = prep_res['posterior_dynamics_marg']
+        ach_vs_dynamics=ah.get_posterior_weighted_average(ach,posterior_dynamics_marg)
+        ach_vs_dynamics_l.append(ach_vs_dynamics)
+    ach_vs_dynamics_l=pd.DataFrame(ach_vs_dynamics_l)
+    ach_vs_dynamics_l.columns=dynamics_label_l
+    return ach_vs_dynamics_l
+
