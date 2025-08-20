@@ -630,7 +630,7 @@ def plot_paired_line_median(
     """
     Plot paired data (n x 2 DataFrame): each row as a line connecting the two columns,
     and a bar for the median of each column. Also performs Wilcoxon signed-rank test,
-    computes a rank-biserial effect size, annotates significance stars if significant,
+    computes Cohen's d for paired differences, annotates significance stars if significant,
     and writes p-value and effect size on the figure.
 
     Parameters
@@ -649,7 +649,7 @@ def plot_paired_line_median(
     Returns
     - fig, ax, result_dict
       result_dict contains: { 'n': int, 'statistic': float, 'pvalue': float,
-                              'effect_size_rb': float, 'median_col1': float,
+                              'effect_size': float, 'median_col1': float,
                               'median_col2': float, 'median_diff': float,
                               'stars': str }
     """
@@ -693,9 +693,10 @@ def plot_paired_line_median(
     width_list = _to_list(line_widths, 1.5)
     alpha_list = _to_list(line_alphas, 0.8)
 
-    # Draw median bars first (behind lines)
-    ax.bar(x_positions, medians, color=bar_color, edgecolor=bar_edgecolor,
-           alpha=bar_alpha, width=bar_width, zorder=1)
+    # Draw median as horizontal black line segments at each column position
+    seg_half = bar_width/2.0
+    for xi, mi in zip(x_positions, medians):
+        ax.hlines(y=mi, xmin=xi-seg_half, xmax=xi+seg_half, colors='k', linewidth=2.0, zorder=3)
 
     # Draw paired lines for each row
     for i in range(num_rows):
@@ -738,13 +739,14 @@ def plot_paired_line_median(
         res = wilcoxon(x_nz, y_nz, alternative=alternative, zero_method='wilcox', correction=False, mode='auto')
         statistic = float(res.statistic)
         pvalue = float(res.pvalue)
-        # Rank-biserial correlation for Wilcoxon: r_rb = 2*W+ / (n(n+1)) - 1
-        W_total = n_eff * (n_eff + 1) / 2.0
-        effect_size_rb = 2.0 * statistic / W_total - 1.0
+        # Cohen's d for paired samples: mean(d) / sd(d)
+        diffs_nz = y_nz - x_nz
+        sd = np.nanstd(diffs_nz, ddof=1) if len(diffs_nz) > 1 else np.nan
+        effect_size = float(np.nanmean(diffs_nz) / sd) if (sd is not None and sd > 0) else np.nan
     else:
         statistic = np.nan
         pvalue = 1.0
-        effect_size_rb = np.nan
+        effect_size = np.nan
 
     # Stars for significance
     def _p_to_stars(p):
@@ -775,14 +777,14 @@ def plot_paired_line_median(
 
     # Text annotation for p-value and effect size in axes coords (top-left)
     median_diff = float(np.nanmedian(df.iloc[:, 1] - df.iloc[:, 0]))
-    text_str = f"Wilcoxon p={pvalue:.3g}, r_rb={effect_size_rb:.2f}, n={n_eff}"
+    text_str = f"Wilcoxon p={pvalue:.3g}, effect size={effect_size:.2f}, n={n_eff}"
     ax.text(0.02, 0.98, text_str, transform=ax.transAxes, ha='left', va='top', fontsize=text_fontsize)
 
     result = {
         'n': n_eff,
         'statistic': statistic,
         'pvalue': pvalue,
-        'effect_size_rb': effect_size_rb,
+        'effect_size': effect_size,
         'median_col1': float(medians[0]),
         'median_col2': float(medians[1]),
         'median_diff': median_diff,
