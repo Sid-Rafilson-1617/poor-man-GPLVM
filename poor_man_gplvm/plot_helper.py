@@ -778,7 +778,7 @@ def plot_paired_line_median(
 
     # Text annotation for p-value and effect size in axes coords (top-left)
     median_diff = float(np.nanmedian(df.iloc[:, 1] - df.iloc[:, 0]))
-    text_str = f"Wilcoxon p={pvalue:.3g}, effect size={effect_size:.2f}, n={n_eff}"
+    text_str = f"Wilcoxon p={pvalue:.3g}\neffect size={effect_size:.2f}\nn={n_eff}"
     ax.text(0.02, 0.98, text_str, transform=ax.transAxes, ha='left', va='top', fontsize=text_fontsize)
 
     result = {
