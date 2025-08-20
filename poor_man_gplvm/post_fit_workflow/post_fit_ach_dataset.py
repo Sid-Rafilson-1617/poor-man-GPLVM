@@ -564,16 +564,21 @@ def gather_feature_shuffle_across_sessions(analysis_res_d_allsess,prep_fig_save_
     # both are already shifted
 
     to_shift_d={} # (feature_key,event_key): n_sess
-    for kk in analysis_res_d_allsess[0].keys():
+    key_l = []
+    for analysis_res_d in analysis_res_d_allsess:
+        key_l.append(list(analysis_res_d.keys()))
+    key_l = list(set(key_l))
+    
+    for kk in key_l:
         all_feature_allsess[kk] = []
         all_shuffle_allsess[kk] = []
         for analysis_res_d in analysis_res_d_allsess:
             if kk in analysis_res_d:
                 feature_mean = analysis_res_d[kk]['feature'].mean(axis=0)
                 shuffle_mean = analysis_res_d[kk]['shuffle']
-            all_feature_allsess[kk].append(feature_mean)
-            all_shuffle_allsess[kk].append(shuffle_mean)
-        
+                all_feature_allsess[kk].append(feature_mean)
+                all_shuffle_allsess[kk].append(shuffle_mean)
+            
         all_shuffle_allsess[kk] = np.array(all_shuffle_allsess[kk]) # n_session x n_shuffle x n_time
         to_shift = all_shuffle_allsess[kk].mean(axis=(1,2)) - all_shuffle_allsess[kk].mean()
         to_shift_d[kk] = to_shift # n_sess
