@@ -453,6 +453,7 @@ def feature_distance_vs_label_distance_analysis(prep_res,label_intv,ach_intv=Non
             assert ach_onset is not None
             ach_onset_sub = ach_onset.restrict(label_intv)
             interval_d['ACh_onset'] = nap.IntervalSet(ach_onset_sub.t,ach_onset_sub.t+ach_extend_win)
+            assert np.isnan(label_intv.in_interval(nap.Ts(interval_d['ACh_onset']['start']))).sum()==0
         else:
             ma = np.logical_not(np.isnan(label_intv.in_interval(nap.Ts(ach_intv['start']))))
             interval_d['ACh_onset'] = ach_intv[ma]
