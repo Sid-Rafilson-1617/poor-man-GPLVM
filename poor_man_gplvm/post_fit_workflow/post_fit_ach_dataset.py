@@ -609,3 +609,4 @@ def gather_feature_shuffle_across_sessions(analysis_res_d_allsess,prep_fig_save_
     test_res_d.to_csv(os.path.join(prep_fig_save_dir,'peri_event_session_agg_test_res.csv'))
 
     res = {'all_feature_allsess':all_feature_allsess,'all_shuffle_allsess':all_shuffle_allsess,'to_shift_d':to_shift_d,'test_res_d':test_res_d}
+    return res
