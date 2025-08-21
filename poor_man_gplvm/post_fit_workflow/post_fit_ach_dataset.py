@@ -463,6 +463,7 @@ def feature_distance_vs_label_distance_analysis(prep_res,label_intv,ach_intv=Non
             interval_d['ripple'] = np.nonzero(interval_d['ripple'].d)[0] # indices
         else:
             print('ripple interval not found, skipping')
+    pdb.set_trace()
     mean_feature_d = get_mean_feature_in_interval(feature_d,interval_d)
     for k,v in mean_feature_d.items():
         mean_feature_d[k] = mean_feature_d[k].restrict(label_intv)
