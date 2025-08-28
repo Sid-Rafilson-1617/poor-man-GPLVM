@@ -411,7 +411,10 @@ class AbstractGPLVMJump1D(ABC):
     
     # this is a more convenient call after fitting; hyperparam is used when available, if not then use the self.xxx
     def decode_latent(self,y,tuning=None,hyperparam={},ma_neuron=None,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000,t_l=None):
-        
+        '''
+        y: n_time x n_neuron, 
+        if t_l is provided, then return TsdFrame
+        '''
         if tuning is None:
             tuning = self.tuning
         if ma_neuron is None:
