@@ -34,7 +34,10 @@ def get_loglikelihood_ma_poisson(y,tuning,hyperparam,ma_neuron,ma_latent,dt=1.):
     ma_latent: n_latent,
     hyperparam: for consistency
     '''
-    ll = jscipy.stats.poisson.logpmf(y,(tuning*dt)+1e-20) # n_pos x n_neuron
+    # Manual Poisson log-likelihood that is JIT-safe and supports non-integer y via Gamma extension
+    # ll(y|lambda) = y * log(lambda) - lambda - log(Gamma(y+1))
+    lam = (tuning * dt) + 1e-20  # n_latent x n_neuron
+    ll = jscipy.special.xlogy(y, lam) - lam - jscipy.special.gammaln(y + 1.0)  # n_latent x n_neuron
     
     # First compute log likelihood per position by summing over neurons (with neuron mask)
     ll_per_pos = (ll * ma_neuron[None,:]).sum(axis=1)  # n_latent
