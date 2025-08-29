@@ -654,7 +654,18 @@ class AbstractGPLVMJump1D(ABC):
                   }
         return em_res
 
-
+    
+    def predict_expected_rate(self,post_latent_marg,tuning=None): #[[careful about multiD]]
+            '''
+            predict expected firing rate, expectation over latent posterior
+            post_latent_marg: n_time x n_latent
+            tuning: n_latent x n_neuron
+            return: n_time x n_neuron
+            '''
+            if tuning is None:
+                tuning = self.tuning         
+            rate=jnp.einsum('pn,tp->tn',tuning,post_latent_marg)
+            return rate
         
 
             
