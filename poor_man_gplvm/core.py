@@ -452,7 +452,7 @@ class AbstractGPLVMJump1D(ABC):
 
         return decoding_res
 
-    def decode_latent_naive_bayes(self,y,tuning=None,hyperparam={},ma_neuron=None,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000,dt_l=1.,observation_model=None):
+    def decode_latent_naive_bayes(self,y,tuning=None,hyperparam={},ma_neuron=None,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000,dt_l=1.,observation_model=None,t_l=None):
         '''
         decode the latent using naive bayes, not temporal smoothing; wrapper of decoder.get_naive_bayes_ma_chunk, conveniently making many arguments optional
         '''
@@ -465,7 +465,8 @@ class AbstractGPLVMJump1D(ABC):
         
         log_posterior_latent,log_marginal_l,log_marginal_total,ll_per_pos_l = decoder.get_naive_bayes_ma_chunk(y,tuning,hyperparam,ma_neuron,ma_latent,dt_l=dt_l,n_time_per_chunk=n_time_per_chunk,observation_model=observation_model)
         posterior_latent = np.exp(log_posterior_latent)
-        
+        if t_l is not None:
+            posterior_latent = nap.TsdFrame(d=posterior_latent,t=t_l)
         decoding_res = {'log_posterior_latent':np.array(log_posterior_latent),
                         'log_marginal_l':np.array(log_marginal_l),
                         'log_marginal_total':log_marginal_total.item(),
@@ -727,11 +728,11 @@ class PoissonGPLVMJump1D(AbstractGPLVMJump1D):
         log_acausal_posterior_all,log_marginal_final,log_causal_posterior_all,log_one_step_predictive_marginals_allchunk,log_accumulated_joint_total,log_likelihood_all = decoder.smooth_all_step_combined_ma_chunk(y,tuning,hyperparam,log_latent_transition_kernel_l,log_dynamics_transition_kernel,ma_neuron,ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk,observation_model='poisson')
         return log_acausal_posterior_all,log_marginal_final,log_causal_posterior_all,log_one_step_predictive_marginals_allchunk,log_accumulated_joint_total,log_likelihood_all
 
-    def decode_latent_naive_bayes(self,y,tuning=None,hyperparam={},ma_neuron=None,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000,dt_l=1.):
+    def decode_latent_naive_bayes(self,y,tuning=None,hyperparam={},ma_neuron=None,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000,dt_l=1.,t_l=None):
         '''
         decode the latent using naive bayes, not temporal smoothing; wrapper of decoder.get_naive_bayes_ma_chunk, conveniently making many arguments optional
         '''
-        return super(PoissonGPLVMJump1D,self).decode_latent_naive_bayes(y,tuning=tuning,hyperparam=hyperparam,ma_neuron=ma_neuron,ma_latent=ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk,dt_l=dt_l,observation_model='poisson')
+        return super(PoissonGPLVMJump1D,self).decode_latent_naive_bayes(y,tuning=tuning,hyperparam=hyperparam,ma_neuron=ma_neuron,ma_latent=ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk,dt_l=dt_l,observation_model='poisson',t_l=t_l)
 
     def sample_y(self,latent_l,hyperparam={},tuning=None,dt=1.,key=jax.random.PRNGKey(10)):
         if tuning is None:
@@ -823,10 +824,10 @@ class GaussianGPLVMJump1D(AbstractGPLVMJump1D):
         hyperparam_['noise_std'] = hyperparam_.get('noise_std',self.noise_std)
         return super(GaussianGPLVMJump1D,self).decode_latent(y,tuning=tuning,hyperparam=hyperparam_,ma_neuron=ma_neuron,ma_latent=ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk)
     
-    def decode_latent_naive_bayes(self,y,tuning=None,hyperparam={},ma_neuron=None,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000,dt_l=1.):
+    def decode_latent_naive_bayes(self,y,tuning=None,hyperparam={},ma_neuron=None,ma_latent=None,likelihood_scale=1.,n_time_per_chunk=10000,dt_l=1.,t_l=None):
         hyperparam_ = hyperparam.copy() # don't mutate the original hyperparam otherwise weird things can happen
         hyperparam_['noise_std'] = hyperparam_.get('noise_std',self.noise_std)
-        return super(GaussianGPLVMJump1D,self).decode_latent_naive_bayes(y,tuning=tuning,hyperparam=hyperparam_,ma_neuron=ma_neuron,ma_latent=ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk,dt_l=dt_l,observation_model='gaussian')
+        return super(GaussianGPLVMJump1D,self).decode_latent_naive_bayes(y,tuning=tuning,hyperparam=hyperparam_,ma_neuron=ma_neuron,ma_latent=ma_latent,likelihood_scale=likelihood_scale,n_time_per_chunk=n_time_per_chunk,dt_l=dt_l,observation_model='gaussian',t_l=t_l)
 
     def sample_y(self,latent_l,hyperparam={},tuning=None,dt=1.,key=jax.random.PRNGKey(10)):
         if tuning is None:
@@ -895,14 +896,14 @@ class PoissonGPLVM1D(AbstractGPLVM1D):
         return log_acausal_posterior_all, log_marginal_final, log_causal_posterior_all, log_one_step_predictive_marginals_allchunk, log_accumulated_joint_total, log_likelihood_all
 
     def decode_latent_naive_bayes(self, y, tuning=None, hyperparam={}, ma_neuron=None, ma_latent=None, 
-                                 likelihood_scale=1., n_time_per_chunk=10000, dt_l=1.):
+                                 likelihood_scale=1., n_time_per_chunk=10000, dt_l=1.,t_l=None):
         '''
         decode the latent using naive bayes, not temporal smoothing
         '''
         return super(PoissonGPLVM1D, self).decode_latent_naive_bayes(
             y, tuning=tuning, hyperparam=hyperparam, ma_neuron=ma_neuron, ma_latent=ma_latent, 
             likelihood_scale=likelihood_scale, n_time_per_chunk=n_time_per_chunk, dt_l=dt_l, 
-            observation_model='poisson')
+            observation_model='poisson',t_l=t_l)
 
     def sample_y(self, latent_l, hyperparam={}, tuning=None, dt=1., key=jax.random.PRNGKey(10)):
         if tuning is None:
@@ -997,13 +998,13 @@ class GaussianGPLVM1D(AbstractGPLVM1D):
             likelihood_scale=likelihood_scale, n_time_per_chunk=n_time_per_chunk)
     
     def decode_latent_naive_bayes(self, y, tuning=None, hyperparam={}, ma_neuron=None, ma_latent=None, 
-                                 likelihood_scale=1., n_time_per_chunk=10000, dt_l=1.):
+                                 likelihood_scale=1., n_time_per_chunk=10000, dt_l=1.,t_l=None):
         hyperparam_ = hyperparam.copy() # don't mutate the original hyperparam otherwise weird things can happen
         hyperparam_['noise_std'] = hyperparam_.get('noise_std', self.noise_std)
         return super(GaussianGPLVM1D, self).decode_latent_naive_bayes(
             y, tuning=tuning, hyperparam=hyperparam_, ma_neuron=ma_neuron, ma_latent=ma_latent, 
             likelihood_scale=likelihood_scale, n_time_per_chunk=n_time_per_chunk, dt_l=dt_l, 
-            observation_model='gaussian')
+            observation_model='gaussian',t_l=t_l)
 
     def sample_y(self, latent_l, hyperparam={}, tuning=None, dt=1., key=jax.random.PRNGKey(10)):
         if tuning is None:
