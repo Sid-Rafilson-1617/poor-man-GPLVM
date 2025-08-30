@@ -116,7 +116,8 @@ def plot_state_list_vs_position(state_l, map_state,behavior_tsdf,pos_col=['x','y
     find times when one state is the MAP, plot the corresponding positions of those times
     '''
 
-    
+    if isinstance(map_state,nap.Tsd):
+        map_state = map_state.d
     
     cmap=plt.get_cmap(cmap_name)
     if ax is None:
