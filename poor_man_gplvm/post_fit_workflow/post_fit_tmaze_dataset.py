@@ -22,7 +22,7 @@ def get_latent_occurance_index_per_speed_level(map_latent,speed_tsd,speed_thresh
         latent_ma = map_latent.d==latent_i
         latent_occurance_index_per_speed_level[latent_i] = {}
         for i in range(len(speed_tresh_bins)-1):
-            speed_ma = speed_tsd.d >= speed_tresh_bins[i] & speed_tsd.d < speed_tresh_bins[i+1]
+            speed_ma = (speed_tsd.d >= speed_tresh_bins[i]) & (speed_tsd.d < speed_tresh_bins[i+1])
             latent_run_ma = np.logical_and(latent_ma,speed_ma)
             latent_occurance_index_per_speed_level[latent_i][i] = latent_run_ma
     return latent_occurance_index_per_speed_level
