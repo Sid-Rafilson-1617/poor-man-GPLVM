@@ -224,7 +224,7 @@ def get_latent_field_properties(latent_occurance_index_per_speed_level,cluster_l
             if trial_intervals is not None:
                 position_mean_sub_trials = {}
                 for k,trials_sub in trials_sub_k.items():
-                    position_mean_sub_trials[k] = position_label.restrict(trials_sub).mean()
+                    position_mean_sub_trials[k] = position_sub.restrict(trials_sub).mean()
                     properties_d[f'{k}_mean'] = position_mean_sub_trials[k]
                 position_mean_sub_trials['diff']=position_mean_sub_trials['late'] - position_mean_sub_trials['early']
                 properties_d[f'diff'] = position_mean_sub_trials['diff']
