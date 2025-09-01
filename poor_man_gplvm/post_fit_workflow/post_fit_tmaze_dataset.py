@@ -330,7 +330,7 @@ def get_latent_in_position_range(latent_occurance_index_per_speed_level,position
 
     the counting is seperated for left and right trials
     '''
-    trial_intervals_correct=trial_intervals[(trial_intervals['choice']==1)]
+    trial_intervals_correct=trial_intervals[(trial_intervals['choice']==1)] # only look at correct trials
     gpb=trial_intervals_correct.groupby('visitedArm')
     intv_d = {0:trial_intervals_correct[gpb[0]],1:trial_intervals_correct[gpb[1]]}
     
@@ -355,3 +355,33 @@ def get_latent_in_position_range(latent_occurance_index_per_speed_level,position
         occurance_in_range_alllatent[li] = occurance_in_range
     occurance_in_range_alllatent = pd.concat(occurance_in_range_alllatent)
     return occurance_in_range_alllatent
+
+def get_single_reward_latent(occurance_in_range_alllatent):
+    '''
+    filter out latent that is tuned to reward location on one side 
+    occurance_in_range_alllatent: from get_latent_in_position_range, pd.dataframe, (latent, left/right) x ['frac','total','frac_lr_total']
+    '''
+    tuned_to_single_reward = []
+    gpb=occurance_in_range_alllatent.groupby(level=0)
+    for k,val in gpb:
+        majority = (val['frac']>0.8).sum()==1
+        enough_occurance = (val['total'][val['frac']>0.8] > 10).all()
+        if majority and enough_occurance:
+            tuned_to_single_reward.append(k)
+    print(tuned_to_single_reward)
+    return tuned_to_single_reward
+
+def get_both_reward_latent(occurance_in_range_alllatent):
+    '''
+    occurance_in_range_alllatent: from get_latent_in_position_range, pd.dataframe, (latent, left/right) x ['frac','total','frac_lr_total']
+    '''
+    tuned_to_both_reward = []
+    gpb=occurance_in_range_alllatent.groupby(level=0)
+    for k,val in gpb:
+        majority = (val['frac']>0.8).sum()==2
+        enough_occurance = (val['total'][val['frac']>0.8] > 10).all()
+        if majority and enough_occurance:
+            tuned_to_both_reward.append(k)
+    print(tuned_to_both_reward)
+    return tuned_to_both_reward
+        
