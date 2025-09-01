@@ -351,6 +351,7 @@ def get_latent_in_position_range(latent_occurance_index_per_speed_level,position
             total_in_range_d[lr] = total_in_range
         occurance_in_range = {'frac':frac_in_range_d,'total':total_in_range_d}
         occurance_in_range = pd.DataFrame(occurance_in_range)
+        occurance_in_range['frac_lr_total'] = occurance_in_range['total'] / occurance_in_range['total'].sum() # fraction of occurance among left right combined, to select latent where left and right are more even
         occurance_in_range_alllatent[li] = occurance_in_range
     occurance_in_range_alllatent = pd.concat(occurance_in_range_alllatent)
     return occurance_in_range_alllatent
