@@ -205,68 +205,7 @@ def get_latent_field_properties(latent_occurance_index_per_speed_level,cluster_l
     '''
     trials_sub_k = {}
     
-    # Helper functions for circular statistics on a linear variable wrapped between data_min and data_max
-    def _extract_values_1d(obj):
-        """Return a 1D numpy array of data values from supported inputs (nap objects, pandas, numpy)."""
-        if hasattr(obj, 'd'):
-            vals = obj.d
-        elif isinstance(obj, (pd.Series, np.ndarray, list)):
-            vals = np.asarray(obj)
-        else:
-            # Fallback: try numpy conversion
-            vals = np.asarray(obj)
-        # Squeeze to 1D if possible (assuming circular stats are only for 1D)
-        return np.ravel(vals)
-
-    def _compute_data_bounds_for_circular(variable_obj):
-        vals_all = _extract_values_1d(variable_obj)
-        data_min_ = np.nanmin(vals_all)
-        data_max_ = np.nanmax(vals_all)
-        return data_min_, data_max_
-
-    def _circular_mean(values_1d, a, b):
-        vals = _extract_values_1d(values_1d)
-        if vals.size == 0:
-            return np.nan
-        period = b - a
-        if not np.isfinite(period) or period == 0:
-            return np.nan
-        theta = 2 * np.pi * (vals - a) / period
-        C = np.nanmean(np.cos(theta))
-        S = np.nanmean(np.sin(theta))
-        if not np.isfinite(C) or not np.isfinite(S):
-            return np.nan
-        mean_ang = np.arctan2(S, C) % (2 * np.pi)
-        mean_val = a + (period * mean_ang) / (2 * np.pi)
-        return mean_val
-
-    def _circular_std(values_1d, a, b):
-        vals = _extract_values_1d(values_1d)
-        if vals.size == 0:
-            return np.nan
-        period = b - a
-        if not np.isfinite(period) or period == 0:
-            return np.nan
-        theta = 2 * np.pi * (vals - a) / period
-        C = np.nanmean(np.cos(theta))
-        S = np.nanmean(np.sin(theta))
-        R = np.hypot(C, S)
-        if R <= 0 or not np.isfinite(R):
-            return np.nan
-        std_rad = np.sqrt(-2 * np.log(R))
-        std_val = std_rad * period / (2 * np.pi)
-        return std_val
-
-    def _circular_diff(late_val, early_val, a, b):
-        period = b - a
-        if not np.isfinite(period) or period == 0:
-            return np.nan
-        # Convert to angles
-        late_ang = 2 * np.pi * (late_val - a) / period
-        early_ang = 2 * np.pi * (early_val - a) / period
-        # Wrap difference to [-pi, pi]
-        d_ang = (late_ang - early_ang + np.pi) % (2 * np.pi) - np.pi
-        return d_ang * period / (2 * np.pi)
+    
 
     # Pre-compute bounds if doing circular stats
     if do_circular_stat:
@@ -312,3 +251,66 @@ def get_latent_field_properties(latent_occurance_index_per_speed_level,cluster_l
             properties_d_all[latent_i] = properties_d
     properties_d_all = pd.DataFrame(properties_d_all)
     return properties_d_all
+
+# Helper functions for circular statistics on a linear variable wrapped between data_min and data_max
+def _extract_values_1d(obj):
+    """Return a 1D numpy array of data values from supported inputs (nap objects, pandas, numpy)."""
+    if hasattr(obj, 'd'):
+        vals = obj.d
+    elif isinstance(obj, (pd.Series, np.ndarray, list)):
+        vals = np.asarray(obj)
+    else:
+        # Fallback: try numpy conversion
+        vals = np.asarray(obj)
+    # Squeeze to 1D if possible (assuming circular stats are only for 1D)
+    return np.ravel(vals)
+
+def _compute_data_bounds_for_circular(variable_obj):
+    vals_all = _extract_values_1d(variable_obj)
+    data_min_ = np.nanmin(vals_all)
+    data_max_ = np.nanmax(vals_all)
+    return data_min_, data_max_
+
+def _circular_mean(values_1d, a, b):
+    vals = _extract_values_1d(values_1d)
+    if vals.size == 0:
+        return np.nan
+    period = b - a
+    if not np.isfinite(period) or period == 0:
+        return np.nan
+    theta = 2 * np.pi * (vals - a) / period
+    C = np.nanmean(np.cos(theta))
+    S = np.nanmean(np.sin(theta))
+    if not np.isfinite(C) or not np.isfinite(S):
+        return np.nan
+    mean_ang = np.arctan2(S, C) % (2 * np.pi)
+    mean_val = a + (period * mean_ang) / (2 * np.pi)
+    return mean_val
+
+def _circular_std(values_1d, a, b):
+    vals = _extract_values_1d(values_1d)
+    if vals.size == 0:
+        return np.nan
+    period = b - a
+    if not np.isfinite(period) or period == 0:
+        return np.nan
+    theta = 2 * np.pi * (vals - a) / period
+    C = np.nanmean(np.cos(theta))
+    S = np.nanmean(np.sin(theta))
+    R = np.hypot(C, S)
+    if R <= 0 or not np.isfinite(R):
+        return np.nan
+    std_rad = np.sqrt(-2 * np.log(R))
+    std_val = std_rad * period / (2 * np.pi)
+    return std_val
+
+def _circular_diff(late_val, early_val, a, b):
+    period = b - a
+    if not np.isfinite(period) or period == 0:
+        return np.nan
+    # Convert to angles
+    late_ang = 2 * np.pi * (late_val - a) / period
+    early_ang = 2 * np.pi * (early_val - a) / period
+    # Wrap difference to [-pi, pi]
+    d_ang = (late_ang - early_ang + np.pi) % (2 * np.pi) - np.pi
+    return d_ang * period / (2 * np.pi)
