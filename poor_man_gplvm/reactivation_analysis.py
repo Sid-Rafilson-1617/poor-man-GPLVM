@@ -68,7 +68,7 @@ def circular_shuffle_spikes_within_epoch_and_decode(model,spk_mat,pre_post_epoch
     for i in range(n_shuffle):
         spk_mat_shuffled_d = {}
         for pre_post,spk_mat_sub in spk_mat_d.items():
-            spk_mat_sub_shuffled = circular_shuffle_columne_independently(spk_mat_sub,min_shift=5)
+            spk_mat_sub_shuffled = circular_shuffle_column_independently(spk_mat_sub,min_shift=5)
             spk_mat_shuffled_d[pre_post] = spk_mat_sub_shuffled
         decode_res_pre_post = decode_pre_post(model,spk_mat_shuffled_d,decoder_type=decoder_type)
         post_latent_mean_d_shuffled[i]=decode_res_pre_post['post_latent_mean_d']
@@ -77,7 +77,7 @@ def circular_shuffle_spikes_within_epoch_and_decode(model,spk_mat,pre_post_epoch
         
     return post_latent_mean_d_shuffled
 
-def circular_shuffle_columne_independently(spk_mat,min_shift=5):
+def circular_shuffle_column_independently(spk_mat,min_shift=5):
     '''
     circularly shuffle the columns of the spk_mat independently
     '''
