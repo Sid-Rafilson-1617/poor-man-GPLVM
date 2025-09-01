@@ -330,7 +330,7 @@ def get_latent_in_position_range(latent_occurance_index_per_speed_level,position
 
     the counting is seperated for left and right trials
     '''
-    if correct_only
+    if correct_only:
         trial_intervals_correct=trial_intervals[(trial_intervals['choice']==1)] # only look at correct trials
     else:
         trial_intervals_correct=  trial_intervals
