@@ -7,6 +7,7 @@ import pynapple as nap
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import jax.numpy as jnp
 
 '''
 two types of shuffling: 
@@ -33,10 +34,10 @@ def decode_pre_post(model,spk_mat_d,pre_post_epoch_d=None,decoder_type='naive_ba
 
     for pre_post,spk_mat_sub in spk_mat_d.items():
         if decoder_type == 'naive_bayes':
-            decode_res = model.decode_latent_naive_bayes(spk_mat_sub)
+            decode_res = model.decode_latent_naive_bayes(jnp.array(spk_mat_sub))
             post_latent_marg = decode_res['posterior_latent']
         elif decoder_type == 'dynamics':
-            decode_res = model.decode_latent(spk_mat_sub)
+            decode_res = model.decode_latent(jnp.array(spk_mat_sub))
             post_latent_marg = decode_res['posterior_latent_marg']
         else:
             raise ValueError(f"decoder_type {decoder_type} not supported")
