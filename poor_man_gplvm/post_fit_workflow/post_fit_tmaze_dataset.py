@@ -317,3 +317,40 @@ def _circular_diff(late_val, early_val, a, b):
     # Wrap difference to [-pi, pi]
     d_ang = (late_ang - early_ang + np.pi) % (2 * np.pi) - np.pi
     return d_ang * period / (2 * np.pi)
+
+
+def get_latent_in_position_range(latent_occurance_index_per_speed_level,position_label,trial_intervals,reward_lin_range=(109,113),speed_level = 0):
+    '''
+    loop over latent, get the fraction of occurance and total occurance count in some position range (lin; e.g. reward); only look in the immobility/low speed state
+    latent_occurance_index_per_speed_level: from classify_latent
+    position_label: 'lin' from position_tsdf
+    trial_intervals: nap.IntervalSet, trial information including correctness ("choice") and visited arm ("visitedArm"), from preprocessing 
+    reward_lin_range: the position range to look for occurance
+    speed_level: the speed level to look for occurance
+
+    the counting is seperated for left and right trials
+    '''
+    trial_intervals_correct=trial_intervals[(trial_intervals['choice']==1)]
+    gpb=trial_intervals_correct.groupby('visitedArm')
+    intv_d = {0:trial_intervals_correct[gpb[0]],1:trial_intervals_correct[gpb[1]]}
+    
+    occurance_in_range_alllatent={}
+    for li, occurance_per_speed_level in latent_occurance_index_per_speed_level.items():
+        frac_in_range_d = {}
+        total_in_range_d = {}
+        for lr,intv in intv_d.items():
+            oneside_trial_pos = position_label[occurance_per_speed_level[speed_level]].restrict(intv)
+            if len(oneside_trial_pos)>0:
+                ma = (oneside_trial_pos.d>=reward_lin_range[0]) & (oneside_trial_pos.d<=reward_lin_range[1])
+                frac_in_range = ma.mean()
+                total_in_range= ma.sum()
+            else:
+                frac_in_range=0
+                total_in_range=0
+            frac_in_range_d[lr] = frac_in_range
+            total_in_range_d[lr] = total_in_range
+        occurance_in_range = {'frac':frac_in_range_d,'total':total_in_range_d}
+        occurance_in_range = pd.DataFrame(occurance_in_range)
+        occurance_in_range_alllatent[li] = occurance_in_range
+    occurance_in_range_alllatent = pd.concat(occurance_in_range_alllatent)
+    return occurance_in_range_alllatent
