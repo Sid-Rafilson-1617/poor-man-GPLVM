@@ -359,7 +359,7 @@ def get_latent_in_position_range(latent_occurance_index_per_speed_level,position
     occurance_in_range_alllatent = pd.concat(occurance_in_range_alllatent)
     return occurance_in_range_alllatent
 
-def get_single_reward_latent(occurance_in_range_alllatent):
+def get_single_reward_latent(occurance_in_range_alllatent,frac_thresh=0.7,total_thresh=10):
     '''
     filter out latent that is tuned to reward location on one side 
     occurance_in_range_alllatent: from get_latent_in_position_range, pd.dataframe, (latent, left/right) x ['frac','total','frac_lr_total']
@@ -367,22 +367,22 @@ def get_single_reward_latent(occurance_in_range_alllatent):
     tuned_to_single_reward = []
     gpb=occurance_in_range_alllatent.groupby(level=0)
     for k,val in gpb:
-        majority = (val['frac']>0.8).sum()==1
-        enough_occurance = (val['total'][val['frac']>0.8] > 10).all()
+        majority = (val['frac']>frac_thresh).sum()==1
+        enough_occurance = (val['total'][val['frac']>frac_thresh] > total_thresh).all()
         if majority and enough_occurance:
             tuned_to_single_reward.append(k)
     print(tuned_to_single_reward)
     return tuned_to_single_reward
 
-def get_both_reward_latent(occurance_in_range_alllatent):
+def get_both_reward_latent(occurance_in_range_alllatent,frac_thresh=0.7,total_thresh=10):
     '''
     occurance_in_range_alllatent: from get_latent_in_position_range, pd.dataframe, (latent, left/right) x ['frac','total','frac_lr_total']
     '''
     tuned_to_both_reward = []
     gpb=occurance_in_range_alllatent.groupby(level=0)
     for k,val in gpb:
-        majority = (val['frac']>0.8).sum()==2
-        enough_occurance = (val['total'][val['frac']>0.8] > 10).all()
+        majority = (val['frac']>frac_thresh).sum()==2
+        enough_occurance = (val['total'][val['frac']>frac_thresh] > total_thresh).all()
         if majority and enough_occurance:
             tuned_to_both_reward.append(k)
     print(tuned_to_both_reward)
