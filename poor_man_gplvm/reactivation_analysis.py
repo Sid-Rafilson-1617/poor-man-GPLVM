@@ -94,7 +94,7 @@ def random_reassign_prepost_latent_difference(posterior_latent_d,n_shuffle=100):
     '''
     random reassign the pre/post; compute mean and difference
     '''
-    post_concat = np.concatenate(posterior_latent_d.values,axis=0)
+    post_concat = np.concatenate(posterior_latent_d.values(),axis=0)
     pre_post_l = np.array(list(posterior_latent_d.keys()))
     labal_l =[]
     for k,val in posterior_latent_d.items():
