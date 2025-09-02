@@ -389,9 +389,11 @@ def get_both_reward_latent(occurance_in_range_alllatent,frac_thresh=0.7,total_th
     print(tuned_to_both_reward)
     return tuned_to_both_reward
         
-def plot_multiple_latent_spatial_map(latent_ind_l,posterior_latent_map,behavior_tsdf,speed_thresh=5):
+def plot_multiple_latent_spatial_map(latent_ind_l,posterior_latent_map,behavior_tsdf,position_tsdf=None,speed_thresh=5):
     nplots = len(latent_ind_l)
     fig,axs=ph.subplots_wrapper(nplots,)
+    if position_tsdf is None:
+        position_tsdf = behavior_tsdf[['x','y']]
     for ii,i in enumerate(latent_ind_l):
         ax=axs.ravel()[ii]
         # state_l = np.arange(10)
@@ -403,7 +405,7 @@ def plot_multiple_latent_spatial_map(latent_ind_l,posterior_latent_map,behavior_
                                         kwargs_scatter = dict(s=10,alpha=0.5),
                                         marker_per_speed_category = ['^','o'],
                                         do_plot_maze=True,
-                                        position_tsdf=behavior_tsdf[['x','y']],ds=5,
+                                        position_tsdf=position_tsdf,ds=5,
                                                 seperate_colorbar=False
                                     )
         ax=to_return[1]
