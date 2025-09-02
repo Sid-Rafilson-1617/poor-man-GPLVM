@@ -10,6 +10,7 @@ import matplotlib.cm as cm
 import matplotlib.colorbar as colorbar
 import matplotlib
 import seaborn as sns
+import poor_man_gplvm.plot_helper as ph
 
 def get_latent_occurance_index_per_speed_level(map_latent,speed_tsd,speed_thresh_bins=[5]):
     '''
@@ -388,3 +389,23 @@ def get_both_reward_latent(occurance_in_range_alllatent,frac_thresh=0.7,total_th
     print(tuned_to_both_reward)
     return tuned_to_both_reward
         
+def plot_multiple_latent_spatial_map(latent_ind_l,posterior_latent_map,behavior_tsdf,speed_thresh=5):
+    nplots = len(latent_ind_l)
+    fig,axs=ph.subplots_wrapper(nplots,)
+    for ii,i in enumerate(latent_ind_l):
+        ax=axs.ravel()[ii]
+        # state_l = np.arange(10)
+        state_l =[i]
+        to_return=plot_state_list_vs_position(state_l, posterior_latent_map,behavior_tsdf,pos_col=['x','y'],fig=fig,ax=ax,
+                                        speed_col='speed_gauss',
+                                        speed_category_thresh = [speed_thresh], # use this to categorize running and immobility
+                                        cmap_name='Spectral_r',
+                                        kwargs_scatter = dict(s=10,alpha=0.5),
+                                        marker_per_speed_category = ['^','o'],
+                                        do_plot_maze=True,
+                                        position_tsdf=behavior_tsdf[['x','y']],ds=5,
+                                                seperate_colorbar=False
+                                    )
+        ax=to_return[1]
+        ax.set_title(f'state {i}')
+    return fig,axs
