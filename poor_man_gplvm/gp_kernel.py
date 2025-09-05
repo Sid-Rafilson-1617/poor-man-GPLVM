@@ -119,16 +119,16 @@ def create_transition_prob_latent_1d(possible_latent_bin, movement_variance=1.,c
     return latent_transition_kernel, log_latent_transition_kernel
 
 
-def get_custom_kernel_rbf_plus_isolated(possible_latent_bin,lengthscale,var=1):
+def get_custom_kernel_rbf_plus_isolated(possible_latent_bin,tuning_lengthscale,transition_lengthscale,var=1,p_to_isolated=0.001):
     '''
     get custom kernel for tuning and transition:
         rbf kernel plus one isolated latent
     for tuning, the isolated latent has 
-    for transition, the isolated latent has equal transition probability to all other latents
+    for transition, the isolated latent has equal transition probability to all other latents; all others have a set probability to the isolated
     '''
     n_latent_bin = len(possible_latent_bin)
     kernel_mat, log_kernel_mat = vmap(
-        vmap(lambda x,y: rbf_kernel(x,y,lengthscale,var), 
+        vmap(lambda x,y: rbf_kernel(x,y,tuning_lengthscale,var), 
              in_axes=(0,None), out_axes=0),
         out_axes=1, in_axes=(None,0)
         )(possible_latent_bin, possible_latent_bin)
@@ -137,7 +137,13 @@ def get_custom_kernel_rbf_plus_isolated(possible_latent_bin,lengthscale,var=1):
     tuning_kernel=tuning_kernel.at[:,0].set(jnp.zeros(n_latent_bin))
     tuning_kernel = tuning_kernel.at[0,0].set(var)
     # for transition, the isolated latent has equal transition probability to all other latents
-    transition_kernel = kernel_mat.at[0].set(jnp.ones(n_latent_bin)) * (1/n_latent_bin)
-    transition_kernel = transition_kernel.at[:,0].set(jnp.ones(n_latent_bin)) * (1/n_latent_bin)
-    
+    transition_kernel, log_transition_kernel = vmap(
+        vmap(lambda x,y: rbf_kernel(x,y,transition_lengthscale,var), 
+             in_axes=(0,None), out_axes=0),
+        out_axes=1, in_axes=(None,0)
+        )(possible_latent_bin, possible_latent_bin)
+    transition_kernel = transition_kernel.at[0].set(jnp.ones(n_latent_bin)) * (1/n_latent_bin) # p from isolated, uniform
+    transition_kernel = transition_kernel.at[:,0].set(jnp.ones(n_latent_bin)) * p_to_isolated # p to isolated, set
+    the_rest_normalized = (transition_kernel.at[:,1:] / transition_kernel.at[:,1:].sum(axis=1,keepdims=True)) * (1-p_to_isolated)
+    transition_kernel = transition_kernel.at[:,1:].set(the_rest_normalized)
     return tuning_kernel, transition_kernel
