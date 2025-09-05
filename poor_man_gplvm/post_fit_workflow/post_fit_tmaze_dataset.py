@@ -423,3 +423,9 @@ def plot_multiple_latent_posterior_in_time(posterior_latent,**kwargs):
     plt.tight_layout()
 
     return fig,axs
+
+
+def get_time_of_arrival_based_one_position(position_tsdf,lin_range=(109,113)):
+    lin_sub=position_tsdf['lin'].threshold(lin_range[0],method='aboveequal').threshold(lin_range[1],method='belowequal')
+    arrival_times =nap.Ts(t=lin_sub.time_support()[:,0])
+    return arrival_times
