@@ -7,6 +7,9 @@ flake8>=3.8.0
 tqdm==4.66.5
 xarray==2024.3.0
 matplotlib==3.9.2
+plotly==5.24.1
+seaborn==0.13.1
+
 
 # Note: JAX-related packages (jax, jaxlib, jaxopt, optax) are NOT included
 # in the dependencies. Please install them separately via conda.
