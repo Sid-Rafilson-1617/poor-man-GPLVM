@@ -40,7 +40,7 @@ def uniform_kernel(x,y,n_tuning_state):
     return val,log_val
 
 @jit
-def create_transition_prob_1d(possible_latent_bin,possible_dynamics,movement_variance=1,p_move_to_jump=0.01,p_jump_to_move=0.01):
+def create_transition_prob_1d(possible_latent_bin,possible_dynamics,movement_variance=1,p_move_to_jump=0.01,p_jump_to_move=0.01,custom_kernel=None):
     '''
     create the transition probability matrix for 1d latent and dynamics;
     this is done at the beginning of the fit; so the hyperparams can be selected easily
@@ -51,12 +51,22 @@ def create_transition_prob_1d(possible_latent_bin,possible_dynamics,movement_var
     # multiple tuning state transition
     latent_transition_kernel_l = []
     log_latent_transition_kernel_l=[]
-    latent_transition_kernel_func_l = [rbf_kernel,uniform_kernel]
     n_latent_bin = len(possible_latent_bin)
-    latent_transition_kernel_args_l = [
-        [movement_variance,1.],
-        [n_latent_bin]
+    if custom_kernel is None:
+        latent_transition_kernel_func_l = [rbf_kernel,uniform_kernel]
+        latent_transition_kernel_args_l = [
+            [movement_variance,1.],
+            [n_latent_bin]
     ]
+    else:
+        latent_transition_kernel_func_l = [discrete_transition_kernel,uniform_kernel]
+        latent_transition_kernel_args_l = [
+            [custom_kernel],
+            [n_latent_bin]
+        ]
+    
+    
+    
     dynamics_transition_kernel_func = discrete_transition_kernel
     
     for latent_transition_kernel_func,latent_transition_kernel_args in zip(latent_transition_kernel_func_l,
@@ -79,7 +89,7 @@ def create_transition_prob_1d(possible_latent_bin,possible_dynamics,movement_var
     return latent_transition_kernel_l,log_latent_transition_kernel_l,dynamics_transition_kernel,log_dynamics_transition_kernel
 
 @jit
-def create_transition_prob_latent_1d(possible_latent_bin, movement_variance=1.):
+def create_transition_prob_latent_1d(possible_latent_bin, movement_variance=1.,custom_kernel=None):
     '''
     create the transition probability matrix for 1d latent only (no dynamics);
     this is simplified version of create_transition_prob_1d for latent-only models
@@ -89,12 +99,18 @@ def create_transition_prob_latent_1d(possible_latent_bin, movement_variance=1.):
     log_latent_transition_kernel: n_latent x n_latent  
     '''
     # Use RBF kernel for smooth transitions
-    latent_transition_kernel, log_latent_transition_kernel = vmap(
+    if custom_kernel is None:
+        latent_transition_kernel, log_latent_transition_kernel = vmap(
         vmap(lambda x,y: rbf_kernel(x, y, movement_variance, 1.), 
              in_axes=(0,None), out_axes=0),
         out_axes=1, in_axes=(None,0)
-    )(possible_latent_bin, possible_latent_bin)
-    
+        )(possible_latent_bin, possible_latent_bin)
+    else:
+        latent_transition_kernel, log_latent_transition_kernel = vmap(
+        vmap(lambda x,y: discrete_transition_kernel(x,y,custom_kernel), 
+             in_axes=(0,None), out_axes=0),
+        out_axes=1, in_axes=(None,0)
+        )(possible_latent_bin, possible_latent_bin)
     # Normalize to make it a proper transition matrix
     normalizer = latent_transition_kernel.sum(axis=1, keepdims=True)
     latent_transition_kernel = latent_transition_kernel / normalizer
