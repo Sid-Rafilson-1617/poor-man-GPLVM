@@ -439,7 +439,7 @@ def find_all_index_per_latent_pair(latent_pair_l,posterior_latent_map):
         posterior_latent_map = posterior_latent_map.d
     ind_l = []
     for pair in latent_pair_l:
-        ind = np.nonzero(posterior_latent_map[1:]==pair[1] & posterior_latent_map[:-1]==pair[0])[0]
+        ind = np.nonzero((posterior_latent_map[1:]==pair[1]) & (posterior_latent_map[:-1]==pair[0]))[0]
         ind = ind + 1
         ind_l.append(ind)
     ind_l=np.array(ind_l)
