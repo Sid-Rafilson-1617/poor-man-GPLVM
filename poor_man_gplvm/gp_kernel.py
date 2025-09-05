@@ -117,3 +117,27 @@ def create_transition_prob_latent_1d(possible_latent_bin, movement_variance=1.,c
     log_latent_transition_kernel = log_latent_transition_kernel - jnp.log(normalizer)
     
     return latent_transition_kernel, log_latent_transition_kernel
+
+
+def get_custom_kernel_rbf_plus_isolated(possible_latent_bin,lengthscale,var=1):
+    '''
+    get custom kernel for tuning and transition:
+        rbf kernel plus one isolated latent
+    for tuning, the isolated latent has 
+    for transition, the isolated latent has equal transition probability to all other latents
+    '''
+    n_latent_bin = len(possible_latent_bin)
+    rbf_kernel, log_rbf_kernel = vmap(
+        vmap(lambda x,y: rbf_kernel(x,y,lengthscale,var), 
+             in_axes=(0,None), out_axes=0),
+        out_axes=1, in_axes=(None,0)
+        )(possible_latent_bin, possible_latent_bin)
+    # for tuning, the isolated latent has no smoothness
+    tuning_kernel = rbf_kernel.at[0].set(jnp.zeros(n_latent_bin))
+    tuning_kernel=tuning_kernel.at[:,0].set(jnp.zeros(n_latent_bin))
+    tuning_kernel = tuning_kernel.at[0,0].set(1)
+    # for transition, the isolated latent has equal transition probability to all other latents
+    transition_kernel = rbf_kernel.at[0].set(jnp.ones(n_latent_bin)) * (1/n_latent_bin)
+    transition_kernel = transition_kernel.at[:,0].set(jnp.ones(n_latent_bin)) * (1/n_latent_bin)
+    
+    return tuning_kernel, transition_kernel
