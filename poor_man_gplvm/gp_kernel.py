@@ -123,7 +123,7 @@ def get_custom_kernel_rbf_plus_isolated(possible_latent_bin,tuning_lengthscale,t
     '''
     get custom kernel for tuning and transition:
         rbf kernel plus one isolated latent
-    for tuning, the isolated latent has 
+    for tuning, the isolated latent has no smoothness with other latents; magnitude set to var
     for transition, the isolated latent has equal transition probability to all other latents; all others have a set probability to the isolated
     '''
     n_latent_bin = len(possible_latent_bin)
