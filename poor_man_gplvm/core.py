@@ -41,12 +41,13 @@ def generate_basis(lengthscale,n_latent_bin,explained_variance_threshold_basis =
     # use rbf kernel eigenspectrum to determine n basis
     if custom_kernel is not None:
         basis_type = 'custom_kernel'
-    # filter out basis for numerical instability
-    n_basis = (jnp.cumsum(sing_val / sing_val.sum()) < explained_variance_threshold_basis).sum() + 1 # first dimension that cross the thresh, n below + 1
+    
     if basis_type == 'rbf':
         possible_latent_bin = jnp.arange(n_latent_bin)
         tuning_kernel,log_tuning_kernel = vmap(vmap(lambda x,y: gpk.rbf_kernel(x,y,lengthscale,1.),in_axes=(0,None),out_axes=0),out_axes=1,in_axes=(None,0))(possible_latent_bin,possible_latent_bin)
         tuning_basis,sing_val,_ = jnp.linalg.svd(tuning_kernel)
+        # filter out basis for numerical instability
+        n_basis = (jnp.cumsum(sing_val / sing_val.sum()) < explained_variance_threshold_basis).sum() + 1 # first dimension that cross the thresh, n below + 1
         sqrt_eigval=jnp.sqrt(jnp.sqrt(sing_val))
         tuning_basis = tuning_basis[:,:n_basis] * sqrt_eigval[:n_basis][None,:] 
     elif basis_type == 'bspline':
@@ -55,7 +56,10 @@ def generate_basis(lengthscale,n_latent_bin,explained_variance_threshold_basis =
     elif basis_type == 'custom_kernel':
         assert custom_kernel is not None, "custom_kernel must be provided when basis_type is custom_kernel"
         tuning_basis,sing_val,_ = jnp.linalg.svd(custom_kernel)
+        # filter out basis for numerical instability
+        n_basis = (jnp.cumsum(sing_val / sing_val.sum()) < explained_variance_threshold_basis).sum() + 1 # first dimension that cross the thresh, n below + 1
         tuning_basis = tuning_basis[:,:n_basis] * sqrt_eigval[:n_basis][None,:] 
+        
 
 
 
