@@ -64,9 +64,7 @@ state_l, spk = model.sample(T)
 y = spk # data for fitting is n_time x n_neuron 
 em_res=model.fit_em(y,key=jax.random.PRNGKey(3),
                     n_iter=20,
-                      posterior_init=None,ma_neuron=None,ma_latent=None,n_time_per_chunk=10000,dt=1.,likelihood_scale=1.,
-                      save_every=None,m_step_tol=1e-10,
-                    posterior_init_kwargs={'random_scale':1}
+                      posterior_init=None,ma_neuron=None,ma_latent=None,n_time_per_chunk=10000
                    )
 
 # to decode (potentially) new data
