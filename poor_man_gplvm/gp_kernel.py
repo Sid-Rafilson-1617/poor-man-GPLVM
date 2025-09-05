@@ -144,6 +144,6 @@ def get_custom_kernel_rbf_plus_isolated(possible_latent_bin,tuning_lengthscale,t
         )(possible_latent_bin, possible_latent_bin)
     transition_kernel = transition_kernel.at[0].set(jnp.ones(n_latent_bin)) * (1/n_latent_bin) # p from isolated, uniform
     transition_kernel = transition_kernel.at[:,0].set(jnp.ones(n_latent_bin)) * p_to_isolated # p to isolated, set
-    the_rest_normalized = (transition_kernel.at[:,1:] / transition_kernel.at[:,1:].sum(axis=1,keepdims=True)) * (1-p_to_isolated)
+    the_rest_normalized = (transition_kernel[:,1:] / transition_kernel[:,1:].sum(axis=1,keepdims=True)) * (1-p_to_isolated)
     transition_kernel = transition_kernel.at[:,1:].set(the_rest_normalized)
     return tuning_kernel, transition_kernel
