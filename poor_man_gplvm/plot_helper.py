@@ -797,3 +797,134 @@ def plot_paired_line_median(
     set_two_ticks(ax,apply_to='y',do_int=False)
     return fig, ax, result
 
+
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+import pynapple as nap
+from matplotlib.colors import Normalize
+
+def plot_pynapple_data_mpl(data_dict,  height_per_plot=3,width_per_plot=6,height_ratios=None):
+    """
+    Plot a dictionary of pynapple objects using matplotlib.
+    
+    Parameters:
+        data_dict (dict): Dictionary where each key maps to a pynapple object.
+                          Each object must have attributes `.t` (time) and `.d` (data)
+                          and a method `.restrict(interval)`.
+        figsize (tuple): Figure size (width, height) in inches.
+        height_ratios (list): Optional list of relative heights for each subplot.
+                              If None, equal heights are used.
+        
+    Returns:
+        fig (matplotlib.figure.Figure): The generated figure.
+        axs (list): List of subplot axes.
+    """
+    # Compute common time range across all arrays
+    min_times = [np.min(arr.t) for arr in data_dict.values() if not isinstance(arr,tuple)]
+    max_times = [np.max(arr.t) for arr in data_dict.values() if not isinstance(arr,tuple)]
+    
+    st = np.max(min_times)
+    ed = np.min(max_times)
+    
+    # Create a common time interval
+    common_interval = nap.IntervalSet([st, ed])
+    
+    # Restrict each array to the common time range
+    for key, arr in data_dict.items():
+        if not isinstance(arr,tuple):
+            data_dict[key] = arr.restrict(common_interval)
+        else:
+            tind,uind,c_l = arr
+            ma = (tind < ed) & (tind > st)
+            tind = tind[ma]
+            uind = uind[ma]
+            c_l = c_l[ma]
+            data_dict[key] = (tind,uind,c_l)
+    
+    n_plots = len(data_dict)
+    
+    # Set up height ratios if not provided
+    if height_ratios is None:
+        height_ratios = [1] * n_plots
+    
+    # Create figure and subplots with gridspec for flexible heights
+    fig = plt.figure(figsize=(width_per_plot,height_per_plot*n_plots))
+    gs = gridspec.GridSpec(n_plots, 1, height_ratios=height_ratios)
+    
+    axs = []
+    
+    for i, (key, arr) in enumerate(data_dict.items()):
+        if i==0:
+            ax = fig.add_subplot(gs[i])
+        else:
+            ax = fig.add_subplot(gs[i],sharex=axs[0])
+        
+        axs.append(ax)
+        
+        if isinstance(arr,tuple): # then it's for raster plot
+            tind,uind,c_l = arr
+            ax.scatter(tind,uind,c=c_l,cmap='Spectral_r',s=5)
+        # Extract time and data
+        else:
+            t = arr.t
+            d = arr.d
+            
+            # Check dimension of data and plot accordingly
+            if d.ndim == 1:
+                # 1D: Plot a line plot
+                ax.plot(t, d, label=key)
+                
+                # Set robust y range by excluding outliers
+                mu = np.nanmean(d)
+                sigma = np.nanstd(d)
+                if sigma > 0:
+                    z = (d - mu) / sigma
+                    threshold = 5  # adjust threshold as needed
+                    filtered = d[np.abs(z) <= threshold]
+                    if len(filtered) > 0:
+                        ymin, ymax = np.min(filtered), np.max(filtered)
+                        ax.set_ylim(ymin, ymax)
+                
+            elif d.ndim == 2:
+                # 2D: Create a heatmap
+                # For pynapple data, time is along the rows
+                d_plot = d.T
+                
+                # Calculate robust color limits
+                zmin = np.nanquantile(d_plot, 0.01)
+                zmax = np.nanquantile(d_plot, 0.99)
+                
+                # Create heatmap
+                im = ax.imshow(d_plot, aspect='auto', origin='lower', 
+                            interpolation='none', 
+                            extent=[np.min(t), np.max(t), 0, d_plot.shape[0]], 
+                            norm=Normalize(vmin=zmin, vmax=zmax))
+                
+            # Add colorbar
+            # plt.colorbar(im, ax=ax)
+            
+            
+            else:
+                ax.text(0.5, 0.5, f"Unsupported data dimension: {d.ndim}",
+                    horizontalalignment='center', verticalalignment='center',
+                    transform=ax.transAxes)
+            
+        # Set title and labels
+        ax.set_title(key)
+        
+        # Hide x-labels and ticks for all but the bottom subplot
+        if i < n_plots - 1:
+            plt.setp(ax.get_xticklabels(), visible=False)
+    
+    # Set common x-label on the bottom subplot
+    axs[-1].set_xlabel('Time')
+    
+    # Adjust layout
+    plt.tight_layout()
+    
+    return fig, axs,common_interval
+
+# Example usage:
+# fig, axs = plot_pynapple_data_mpl(data_dict, figsize=(12, 8))
+# plt.show() 
