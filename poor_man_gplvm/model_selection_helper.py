@@ -176,8 +176,8 @@ def model_selection_one_split(y,hyperparam_dict,train_index=None,test_index=None
         train_index = slice(0,int(T*(1-test_frac)))
     if test_index is None:
         test_index = slice(int(T*(1-test_frac)),T)
-    y_train = y[train_index]
-    y_test = y[test_index]
+    y_train = jnp.array(y[train_index])
+    y_test = jnp.array(y[test_index])
     hyperparam_grid_l,hyperparam_grid_df = generate_hyperparam_grid(hyperparam_dict)
     model_eval_result_all_configs = {}
 
