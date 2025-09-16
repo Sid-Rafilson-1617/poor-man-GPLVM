@@ -169,7 +169,7 @@ def model_selection_one_split(y,hyperparam_dict,train_index=None,test_index=None
     '''
     
     T,n_neuron = y.shape
-    import ipdb; ipdb.set_trace()
+    import pdb; pdb.set_trace()
     # by default split the data in two contiguous chunks; TODO: make decoder more flexible to take other splits
     if train_index is None:
         train_index = slice(0,int(T*(1-test_frac)))
