@@ -303,8 +303,8 @@ def get_lml_test_history(y_test,model,tuning_saved,do_nb=True):
             nb_test_res=model.decode_latent_naive_bayes(y_test,tuning=tun_)
             lml_test_l.append(nb_test_res['log_marginal_total'])
         else:
-            nb_test_res=model.decode_latent(y_test,tuning=tun_)
-            lml_test_l.append(nb_test_res['log_marginal_final'])
+            test_res=model.decode_latent(y_test,tuning=tun_)
+            lml_test_l.append(test_res['log_marginal_final'])
             
     lml_test_l=np.array(lml_test_l)
     return lml_test_l
