@@ -291,3 +291,21 @@ def get_jump_consensus(jump_p,jump_p_all_chain,window_size=5,jump_p_thresh = 0.4
         is_jump_filtered[jump_time_index_consensus] = 1
 
     return frac_consensus,is_jump_filtered,whether_consensus_ma
+
+
+
+def get_lml_test_history(y_test,model,tuning_saved,do_nb=True):
+    y_test= y_test
+
+    lml_test_l=[]
+    for tun_ in tuning_saved:
+        if do_nb:
+            nb_test_res=model.decode_latent_naive_bayes(y_test,tuning=tun_)
+            lml_test_l.append(nb_test_res['log_marginal_total'])
+        else:
+            nb_test_res=model.decode_latent(y_test,tuning=tun_)
+            lml_test_l.append(nb_test_res['log_marginal_final'])
+            
+    lml_test_l=np.array(lml_test_l)
+    return lml_test_l
+    
