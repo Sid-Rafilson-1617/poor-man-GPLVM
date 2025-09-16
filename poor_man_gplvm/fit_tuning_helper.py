@@ -34,6 +34,7 @@ def get_statistics(log_posterior_probs,y,):
     y_weighted: n_latent x n_neuron (A matrix)
     t_weighted: n_latent  (B vector)
     '''
+    import pdb; pdb.set_trace()
     posterior_probs = jnp.exp(log_posterior_probs)
     y_weighted = jnp.einsum('tl,tn->ln',posterior_probs,y)
     t_weighted = posterior_probs.sum(axis=0) # n_latent,

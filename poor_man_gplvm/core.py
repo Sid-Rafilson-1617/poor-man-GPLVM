@@ -572,7 +572,7 @@ class AbstractGPLVMJump1D(ABC):
         fit the model using 
         after fitting EM with new hyperparam, also update the class attributes, so that post hoc analysis is simpler
         '''
-        import pdb; pdb.set_trace()
+        
         if isinstance(y,nap.TsdFrame):
             y_ =jnp.array(y.d)
         else:
