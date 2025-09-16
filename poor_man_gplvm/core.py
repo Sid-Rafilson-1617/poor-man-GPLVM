@@ -290,7 +290,7 @@ class AbstractGPLVM1D(ABC):
         m_step_res_l = {}
         params = self.params
         
-        pdb.set_trace()
+        
         for i in tqdm.trange(n_iter):
             # M-step with optimizer state continuity
             
@@ -572,6 +572,7 @@ class AbstractGPLVMJump1D(ABC):
         fit the model using 
         after fitting EM with new hyperparam, also update the class attributes, so that post hoc analysis is simpler
         '''
+        import pdb; pdb.set_trace()
         if isinstance(y,nap.TsdFrame):
             y_ =jnp.array(y.d)
         else:
