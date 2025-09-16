@@ -294,16 +294,24 @@ def get_jump_consensus(jump_p,jump_p_all_chain,window_size=5,jump_p_thresh = 0.4
 
 
 
-def get_lml_test_history(y_test,model,tuning_saved,do_nb=True):
+def get_lml_test_history(y_test,model,tuning_saved,do_nb=True,ma_temporal=None):
+    '''
+    with ma_temporal, can specify the temporal mask to be used for the test data; by expanding a full ma_neuron
+    '''
     y_test= y_test
+    if ma_temporal is not None:
+        ma_neuron_ = jnp.ones(y_test.shape[1])
+        ma_neuron = ma_neuron_[None,:] * ma_temporal[:,None]
+    else:
+        ma_neuron = None
 
     lml_test_l=[]
     for tun_ in tuning_saved:
         if do_nb:
-            nb_test_res=model.decode_latent_naive_bayes(y_test,tuning=tun_)
+            nb_test_res=model.decode_latent_naive_bayes(y_test,tuning=tun_,ma_neuron=ma_neuron)
             lml_test_l.append(nb_test_res['log_marginal_total'])
         else:
-            test_res=model.decode_latent(y_test,tuning=tun_)
+            test_res=model.decode_latent(y_test,tuning=tun_,ma_neuron=ma_neuron)
             lml_test_l.append(test_res['log_marginal_final'])
             
     lml_test_l=np.array(lml_test_l)
