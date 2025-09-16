@@ -36,7 +36,8 @@ def get_statistics(log_posterior_probs,y,):
     '''
     import pdb; pdb.set_trace()
     posterior_probs = jnp.exp(log_posterior_probs)
-    y_weighted = jnp.einsum('tl,tn->ln',posterior_probs,y)
+    # y_weighted = jnp.einsum('tl,tn->ln',posterior_probs,y)
+    y_weighted=posterior_probs.T @ y # n_latent x n_neuron; see if edge case is fixed
     t_weighted = posterior_probs.sum(axis=0) # n_latent,
     return y_weighted, t_weighted
 
