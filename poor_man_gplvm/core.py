@@ -166,7 +166,7 @@ class AbstractGPLVM1D(ABC):
         return decoding_res
 
     def decode_latent_naive_bayes(self, y, tuning=None, hyperparam={}, ma_neuron=None, ma_latent=None, 
-                                 likelihood_scale=1., n_time_per_chunk=10000, dt_l=1., observation_model=None):
+                                 likelihood_scale=1., n_time_per_chunk=10000, dt_l=1., observation_model=None,t_l=None):
         '''
         decode the latent using naive bayes, not temporal smoothing
         '''
@@ -181,7 +181,8 @@ class AbstractGPLVM1D(ABC):
             y, tuning, hyperparam, ma_neuron, ma_latent, dt_l=dt_l, 
             n_time_per_chunk=n_time_per_chunk, observation_model=observation_model)
         posterior_latent = np.exp(log_posterior_latent)
-        
+        if t_l is not None:
+            posterior_latent = nap.TsdFrame(d=posterior_latent,t=t_l)
         decoding_res = {
             'log_posterior_latent': np.array(log_posterior_latent),
             'log_marginal_l': np.array(log_marginal_l),
