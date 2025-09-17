@@ -91,7 +91,7 @@ def plot_maze_background(spk_beh_df,ds=10,fig=None,ax=None,mode='line',**kwargs)
 
 from matplotlib.colors import Normalize
 
-def plot_state_list_vs_position(state_l, map_state,behavior_tsdf,pos_col=['x','y'],fig=None,ax=None,
+def plot_latent_list_vs_position(latent_l, map_latent,behavior_tsdf,pos_col=['x','y'],fig=None,ax=None,
                                 speed_col='speed_gauss',
                                 speed_category_thresh = [2], # use this to categorize running and immobility
                                 cmap_name='Spectral_r',
@@ -108,17 +108,17 @@ def plot_state_list_vs_position(state_l, map_state,behavior_tsdf,pos_col=['x','y
                                 background_mode='line',
                                ):
     '''
-    visualize the distribution of some state as a function of 2d position
+    visualize the distribution of some latent as a function of 2d position
     plot running and immobility with different marker shape
-    state_l: n_state, the selected state to be plotted
-    map_state: n_time, ; the maximum posterior state per time
+    latent_l: n_latent, the selected latent to be plotted
+    map_latent: n_time, ; the maximum posterior latent per time
     behavior_tsdf: n_time x n_behavior_variable; has positions
 
-    find times when one state is the MAP, plot the corresponding positions of those times
+    find times when one latent is the MAP, plot the corresponding positions of those times
     '''
 
-    if isinstance(map_state,nap.Tsd):
-        map_state = map_state.d
+    if isinstance(map_latent,nap.Tsd):
+        map_latent = map_latent.d
     
     cmap=plt.get_cmap(cmap_name)
     if ax is None:
@@ -136,15 +136,15 @@ def plot_state_list_vs_position(state_l, map_state,behavior_tsdf,pos_col=['x','y
     
     
     # Plot running and immobility
-    state_l_ind = np.arange(len(state_l)) 
-    norm=Normalize(vmin=0,vmax=len(state_l))
-    colors = cmap(norm(state_l_ind)) # color based on the index of state within state_l, not the state value
+    latent_l_ind = np.arange(len(latent_l)) 
+    norm=Normalize(vmin=0,vmax=len(latent_l))
+    colors = cmap(norm(latent_l_ind)) # color based on the index of latent within latent_l, not the latent value
     
-    # if only plotting one state, then color based on time
-    # time for all time points, not just the MAP time points; this way can compare across different states and see temporal evoluation
-    if len(state_l)==1:
+    # if only plotting one latent, then color based on time
+    # time for all time points, not just the MAP time points; this way can compare across different latents and see temporal evoluation
+    if len(latent_l)==1:
         color_time = True
-        mask = map_state==state_l[0]
+        mask = map_latent==latent_l[0]
         time_l_all = behavior_tsdf.t
         time_l_map = time_l_all[mask]
         norm = Normalize(vmin=time_l_all.min(),vmax=time_l_all.max())
@@ -158,8 +158,8 @@ def plot_state_list_vs_position(state_l, map_state,behavior_tsdf,pos_col=['x','y
     for speed_category_i in speed_category_unique:
         speed_category_mask = speed_category==speed_category_i
         s = marker_per_speed_category[speed_category_i]
-        for ii,state_i in enumerate(state_l):
-            mask = map_state==state_i
+        for ii,latent_i in enumerate(latent_l):
+            mask = map_latent==latent_i
             mask = np.logical_and(mask, speed_category_mask)
             try:
                 
@@ -397,8 +397,8 @@ def plot_multiple_latent_spatial_map(latent_ind_l,posterior_latent_map,behavior_
     for ii,i in enumerate(latent_ind_l):
         ax=axs.ravel()[ii]
         # state_l = np.arange(10)
-        state_l =[i]
-        to_return=plot_state_list_vs_position(state_l, posterior_latent_map,behavior_tsdf,pos_col=['x','y'],fig=fig,ax=ax,
+        latent_l =[i]
+        to_return=plot_latent_list_vs_position(state_l, posterior_latent_map,behavior_tsdf,pos_col=['x','y'],fig=fig,ax=ax,
                                         speed_col='speed_gauss',
                                         speed_category_thresh = [speed_thresh], # use this to categorize running and immobility
                                         cmap_name='Spectral_r',
@@ -409,7 +409,7 @@ def plot_multiple_latent_spatial_map(latent_ind_l,posterior_latent_map,behavior_
                                                 seperate_colorbar=False
                                     )
         ax=to_return[1]
-        ax.set_title(f'state {i}')
+        ax.set_title(f'latent {i}')
     return fig,axs
 
 def plot_multiple_latent_posterior_in_time(posterior_latent,**kwargs):
