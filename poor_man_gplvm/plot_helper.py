@@ -928,3 +928,78 @@ def plot_pynapple_data_mpl(data_dict,  height_per_plot=3,width_per_plot=6,height
 # Example usage:
 # fig, axs = plot_pynapple_data_mpl(data_dict, figsize=(12, 8))
 # plt.show() 
+
+import numpy as np
+from collections.abc import Iterable
+
+def shade_intervals(axs, intervals, *, sort_bounds=True, unique=True, **kwargs):
+    """
+    Shade vertical bands on one axis or a list/array of axes.
+
+    Parameters
+    ----------
+    axs : matplotlib.axes.Axes or iterable of Axes
+        Axis (or axes) to draw on.
+    intervals : array-like, shape (n, 2)
+        Each row is [x_min, x_max]. Can be unsorted; NaNs are ignored.
+    sort_bounds : bool, default True
+        If True, ensures left <= right for each interval.
+    unique : bool, default True
+        If True, merges duplicate rows (exact matches) after sorting.
+    **kwargs :
+        Passed through to `axvspan` (e.g., alpha=0.2, color='C0', zorder=0).
+
+    Returns
+    -------
+    spans : list[list[matplotlib.patches.Polygon]]
+        For each axis, the list of created span patches (outer list is aligned
+        with `axs` order; if a single axis was passed, a single inner list).
+    """
+    intervals = np.asarray(intervals, dtype=float)
+
+    if intervals.ndim != 2 or intervals.shape[1] != 2:
+        raise ValueError("`intervals` must be an array of shape (n, 2).")
+
+    # Drop rows with NaNs
+    mask = ~np.isnan(intervals).any(axis=1)
+    intervals = intervals[mask]
+
+    if sort_bounds and len(intervals):
+        left = np.minimum(intervals[:, 0], intervals[:, 1])
+        right = np.maximum(intervals[:, 0], intervals[:, 1])
+        intervals = np.column_stack([left, right])
+
+    if unique and len(intervals):
+        intervals = np.unique(intervals, axis=0)
+
+    # Normalize axs to a list
+    if hasattr(axs, "plot"):  # single Axes
+        axes = [axs]
+    elif isinstance(axs, Iterable):
+        axes = list(axs)
+        if not axes:
+            raise ValueError("`axs` iterable is empty.")
+        # Basic check: each must look like an Axes (has axvspan)
+        for a in axes:
+            if not hasattr(a, "axvspan"):
+                raise TypeError("All items in `axs` must be Matplotlib Axes.")
+    else:
+        raise TypeError("`axs` must be an Axes or an iterable of Axes.")
+
+    # Defaults
+    if "alpha" not in kwargs and "facecolor" not in kwargs and "color" not in kwargs:
+        kwargs.setdefault("alpha", 0.15)
+
+    spans_all = []
+    for ax in axes:
+        spans = []
+        for x0, x1 in intervals:
+            if x0 == x1:  # zero-width: draw a thin line instead
+                line = ax.axvline(x0, **{**kwargs, "alpha": kwargs.get("alpha", 0.15)})
+                spans.append(line)
+            else:
+                patch = ax.axvspan(x0, x1, **kwargs)
+                spans.append(patch)
+        spans_all.append(spans)
+
+    return spans_all
