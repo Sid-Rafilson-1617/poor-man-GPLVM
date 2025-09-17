@@ -247,7 +247,7 @@ class AbstractGPLVM1D(ABC):
     def fit_em(self, y, hyperparam={}, key=jax.random.PRNGKey(0), n_iter=20,
                log_posterior_init=None, opt_state_curr=None, ma_neuron=None, ma_latent=None, 
                n_time_per_chunk=10000, dt=1., likelihood_scale=1., save_every=None, 
-               posterior_init_kwargs={'random_scale': 0.1}, **kwargs):
+               posterior_init_kwargs={'random_scale': 0.1}, verboase=True, **kwargs):
         '''
         fit the model using EM
         '''
@@ -298,7 +298,7 @@ class AbstractGPLVM1D(ABC):
         params = self.params
         
         
-        for i in tqdm.trange(n_iter):
+        for i in tqdm.trange(n_iter,desc='EM',disable=not verboase):
             # M-step with optimizer state continuity
             
             m_res = self.m_step(params, y_, log_posterior_curr, tuning_basis, hyperparam, 
@@ -573,7 +573,7 @@ class AbstractGPLVMJump1D(ABC):
     def fit_em(self,y,hyperparam={},key=jax.random.PRNGKey(0),
                     n_iter=20,
                       log_posterior_init=None,opt_state_curr=None,ma_neuron=None,ma_latent=None,n_time_per_chunk=10000,dt=1.,likelihood_scale=1.,
-                      save_every=None,posterior_init_kwargs={'random_scale':0.1},
+                      save_every=None,posterior_init_kwargs={'random_scale':0.1},verboase=True,
                       **kwargs):
         '''
         fit the model using 
@@ -628,7 +628,7 @@ class AbstractGPLVMJump1D(ABC):
         params = self.params
         
         
-        for i in tqdm.trange(n_iter):
+        for i in tqdm.trange(n_iter,desc='EM',disable=not verboase):
             
             # M-step with optimizer state continuity
             m_res = self.m_step(params, y_, log_posterior_curr, tuning_basis, hyperparam, opt_state_curr=opt_state_curr)
