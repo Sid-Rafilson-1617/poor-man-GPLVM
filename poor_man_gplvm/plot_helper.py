@@ -1019,7 +1019,7 @@ def pre_post_1d_timeseries_plot(tsd,pre_ep,post_ep,fig=None,ax=None):
     post_mid = (post_ep.end[0] + post_ep.start[0]) / 2
     behavior_mid = (pre_ep.end[0]+post_ep.start[0])/2
     ax.set_xticks([pre_mid,behavior_mid,post_mid])
-    ax.set_xticklabels(['PRE','Behavior','POST'])
+    ax.set_xticklabels(['PRE','Beh.','POST'])
     return fig,ax
 
 def median_plot(**kwargs):
