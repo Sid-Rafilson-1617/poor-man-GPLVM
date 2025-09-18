@@ -9,6 +9,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import jax.numpy as jnp
 import tqdm
+import xarray as xr
 
 '''
 two types of shuffling: 
