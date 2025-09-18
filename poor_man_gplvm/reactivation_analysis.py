@@ -128,16 +128,16 @@ def generate_homogeneous_poisson_surrogate_data(spk_times,intv_per_ep,count_bin=
 
     nbins_per_ep = {}
     rate_per_ep = {}
-    t_l=[]
+    t_l_shuffle=[]
     for k,intv in intv_per_ep.items():
         spk_times_restricted=spk_times.restrict(intv)
         spk_times_restricted_count = spk_times_restricted.count(count_bin)
         nbins = spk_times_restricted_count.shape[0]
-        t_l.append(spk_times_restricted_count.t)
+        t_l_shuffle.append(spk_times_restricted_count.t)
         rate = spk_times_restricted.rate
         rate_per_ep[k] = rate
         nbins_per_ep[k] = nbins
-    t_l=np.concatenate(t_l)
+    t_l_shuffle=np.concatenate(t_l_shuffle)
     spk_surr_l_allshuffle=[]
     for i in tqdm.trange(n_repeat):
         spk_surr_l = []
@@ -147,6 +147,6 @@ def generate_homogeneous_poisson_surrogate_data(spk_times,intv_per_ep,count_bin=
         spk_surr_l = np.concatenate(spk_surr_l,axis=0)
         spk_surr_l_allshuffle.append(spk_surr_l)
 
-    return spk_surr_l_allshuffle,rate_per_ep,nbins_per_ep,t_l
+    return spk_surr_l_allshuffle,rate_per_ep,nbins_per_ep,t_l_shuffle
 
     
