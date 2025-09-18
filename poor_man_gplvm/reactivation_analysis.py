@@ -173,4 +173,4 @@ def aggregate_within_ripple_per_epoch(posterior_latent,ripple_intv_per_ep,):
         post_agg_within_ripple_mean_ep = post_agg_within_ripple.mean(axis=0) # can make this flexible if needed
         post_agg_within_ripple_mean_ep_d[ep] = post_agg_within_ripple_mean_ep
 
-    return post_agg_within_ripple_mean_ep_da
+    return post_agg_within_ripple_mean_ep_d
