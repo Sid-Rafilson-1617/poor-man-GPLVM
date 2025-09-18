@@ -116,10 +116,11 @@ def random_reassign_prepost_latent_difference(posterior_latent_d,n_shuffle=100):
     return post_latent_mean_d_shuffled_l
 
 
-def generate_homogeneous_poisson_surrogate_data(spk_times,intv_per_ep,count_bin=0.02,n_repeat=10):
+def generate_homogeneous_poisson_surrogate_data(spk_times,intv_per_ep,count_bin=0.02,n_repeat=50):
     '''
+    spk_times: nap.TsGroup
     generate homogeneous poisson surrogate data for each epoch
-    intv_per_ep: dict of intervalsets (eg. pre ripples, post ripples), marking epochs to compute FR seperately
+    intv_per_ep: dict of nap.IntervalSet (eg. pre ripples, post ripples), marking epochs to compute FR seperately
     need the time bin for each epoch
     generate spikes
     concatenate
