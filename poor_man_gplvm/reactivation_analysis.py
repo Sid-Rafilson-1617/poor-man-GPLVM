@@ -149,7 +149,7 @@ def generate_homogeneous_poisson_surrogate_data(spk_times,intv_per_ep,count_bin=
 
     return spk_surr_l_allshuffle,rate_per_ep,nbins_per_ep,t_l_shuffle
 
-def aggregate_within_ripple_per_epoch(posterior_latent,ripple_intv_per_ep,)
+def aggregate_within_ripple_per_epoch(posterior_latent,ripple_intv_per_ep,):
     '''
     posterior_latent: tsdframe:n_time x n_latent or   tsdtensor: n_time x n_latent x n_shuffle (for shuffle)
     max within ripple, mean across ripple within epoch
@@ -172,4 +172,4 @@ def aggregate_within_ripple_per_epoch(posterior_latent,ripple_intv_per_ep,)
         post_agg_within_ripple_mean_ep = post_agg_within_ripple.mean(axis=0) # can make this flexible if needed
         post_agg_within_ripple_mean_ep_d[ep] = post_agg_within_ripple_mean_ep
 
-    return post_agg_within_ripple_mean_ep_d
+    return post_agg_within_ripple_mean_ep_da
