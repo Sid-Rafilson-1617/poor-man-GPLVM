@@ -33,46 +33,96 @@ def get_latent_occurance_index_per_speed_level(map_latent,speed_tsd,speed_thresh
             latent_occurance_index_per_speed_level[latent_i][i] = np.nonzero(latent_run_ma)[0]
     return latent_occurance_index_per_speed_level
 
-
-def classify_latent(map_latent,position_tsdf,speed_tsd,speed_thresh=5,min_time_bin=10,eps=1):
+def classify_latent(map_latent,position_tsdf,speed_tsd,speed_thresh=5,min_run_time=10,min_off_maze_time=10):
     '''
-    classify the latent into spatial and non-spatial
-        spatial -- during run, one cluster
-        non-spatial -- during run multi cluster, or just stationary
-    map_latent: n_time, latent label, nap.Tsd
-    position_tsdf: n_time, position, nap.TsdFrame
-    speed_tsd: n_time, speed, nap.Tsd
-    speed_thresh: speed threshold to define run
-    min_time_bin: minimum time to be considered as spatial
+    classsify into: spatial-running, immobility, off-maze
+        spatial-running: during high speed, more time bin than min_time_bin
+        immobility: if not above, then immobility
+        off-maze: certain amount of high speed time outside the maze
+        get rid of off-maze from spatial-running
+        then the rest
     '''
     speed_tsd = speed_tsd.interpolate(map_latent)
+    maze_coord_df,xy_sampled_all = preprt.get_tmaze_xy_sample(position_tsdf,place_bin_size=1.,do_plot=False)
     position_tsdf = position_tsdf.interpolate(map_latent)
     
+    
     is_spatial_all_latent = {}
+    is_immobility_all_latent = {}
+    is_off_maze_all_latent = {}
     cluster_label_per_time_all_latent={}
     # possible_latent = np.unique(map_latent)
     latent_occurance_index_per_speed_level = get_latent_occurance_index_per_speed_level(map_latent,speed_tsd,[speed_thresh])
     for latent_i,occurance_index_per_speed_level in latent_occurance_index_per_speed_level.items():
-        
-        latent_run_index=occurance_index_per_speed_level[1]
-        
-        if len(latent_run_index)>min_time_bin:
-            tocluster=position_tsdf[latent_run_index]['x','y'].d
-            core_samples, labels=dbscan(tocluster,eps=eps,metric='euclidean',)
-            cluster_label_per_time_all_latent[latent_i] = labels
-            if set(labels)== set([-1,0]) or set(labels)== set([0]): # spatial only if one cluster /+ noise
-                is_spatial_all_latent[latent_i] = True
-            else: # all noise, or multi cluster
-                is_spatial_all_latent[latent_i]=False
+        latent_run_index=occurance_index_per_speed_level[2]
+        if len(latent_run_index)>min_run_time:
+            is_spatial_all_latent[latent_i] = True
+            is_immobility_all_latent[latent_i] = False
         else:
             is_spatial_all_latent[latent_i] = False
+            is_immobility_all_latent[latent_i] = True
+            is_off_maze_all_latent[latent_i] = False
+        xy_l = position_tsdf[latent_run_index]['x','y'].d
+        dist_to_maze=preprt.get_dist_to_maze(xy_l,xy_sampled_all)
+        n_off_maze_time = (dist_to_maze >dist_to_maze_thresh).sum()
+        if n_off_maze_time > min_off_maze_time:
+            is_off_maze_all_latent[latent_i] = True
+            is_spatial_all_latent[latent_i] = False
+    
+        
+
     is_spatial_all_latent=pd.Series(is_spatial_all_latent)
-
+    is_immobility_all_latent=pd.Series(is_immobility_all_latent)
+    is_off_maze_all_latent=pd.Series(is_off_maze_all_latent)
     spatial_latent = is_spatial_all_latent.loc[is_spatial_all_latent].index
+    immobility_latent = is_immobility_all_latent.loc[is_immobility_all_latent].index
+    off_maze_latent = is_off_maze_all_latent.loc[is_off_maze_all_latent].index
     nonspatial_latent=is_spatial_all_latent.loc[np.logical_not(is_spatial_all_latent)].index
-
-    latent_classify_res = {'spatial_latent':spatial_latent,'nonspatial_latent':nonspatial_latent,'is_spatial_all_latent':is_spatial_all_latent,'cluster_label_per_time_all_latent':cluster_label_per_time_all_latent,'latent_occurance_index_per_speed_level':latent_occurance_index_per_speed_level}
+    latent_classify_res = {'spatial_latent':spatial_latent,'nonspatial_latent':nonspatial_latent,'immobility_latent':immobility_latent,'off_maze_latent':off_maze_latent,'is_spatial_all_latent':is_spatial_all_latent,'is_immobility_all_latent':is_immobility_all_latent,'is_off_maze_all_latent':is_off_maze_all_latent,'latent_occurance_index_per_speed_level':latent_occurance_index_per_speed_level}
     return latent_classify_res
+
+
+
+
+# def classify_latent(map_latent,position_tsdf,speed_tsd,speed_thresh=5,min_time_bin=10,eps=1):
+#     '''
+#     classify the latent into spatial and non-spatial
+#         spatial -- during run, one cluster
+#         non-spatial -- during run multi cluster, or just stationary
+#     map_latent: n_time, latent label, nap.Tsd
+#     position_tsdf: n_time, position, nap.TsdFrame
+#     speed_tsd: n_time, speed, nap.Tsd
+#     speed_thresh: speed threshold to define run
+#     min_time_bin: minimum time to be considered as spatial
+#     '''
+#     speed_tsd = speed_tsd.interpolate(map_latent)
+#     position_tsdf = position_tsdf.interpolate(map_latent)
+    
+#     is_spatial_all_latent = {}
+#     cluster_label_per_time_all_latent={}
+#     # possible_latent = np.unique(map_latent)
+#     latent_occurance_index_per_speed_level = get_latent_occurance_index_per_speed_level(map_latent,speed_tsd,[speed_thresh])
+#     for latent_i,occurance_index_per_speed_level in latent_occurance_index_per_speed_level.items():
+        
+#         latent_run_index=occurance_index_per_speed_level[1]
+        
+#         if len(latent_run_index)>min_time_bin:
+#             tocluster=position_tsdf[latent_run_index]['x','y'].d
+#             core_samples, labels=dbscan(tocluster,eps=eps,metric='euclidean',)
+#             cluster_label_per_time_all_latent[latent_i] = labels
+#             if set(labels)== set([-1,0]) or set(labels)== set([0]): # spatial only if one cluster /+ noise
+#                 is_spatial_all_latent[latent_i] = True
+#             else: # all noise, or multi cluster
+#                 is_spatial_all_latent[latent_i]=False
+#         else:
+#             is_spatial_all_latent[latent_i] = False
+#     is_spatial_all_latent=pd.Series(is_spatial_all_latent)
+
+#     spatial_latent = is_spatial_all_latent.loc[is_spatial_all_latent].index
+#     nonspatial_latent=is_spatial_all_latent.loc[np.logical_not(is_spatial_all_latent)].index
+
+#     latent_classify_res = {'spatial_latent':spatial_latent,'nonspatial_latent':nonspatial_latent,'is_spatial_all_latent':is_spatial_all_latent,'cluster_label_per_time_all_latent':cluster_label_per_time_all_latent,'latent_occurance_index_per_speed_level':latent_occurance_index_per_speed_level}
+#     return latent_classify_res
 
 def plot_maze_background(spk_beh_df,ds=10,fig=None,ax=None,mode='line',**kwargs):
     if isinstance(spk_beh_df ,nap.TsdFrame):
