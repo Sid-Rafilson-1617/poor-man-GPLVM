@@ -44,14 +44,15 @@ def get_dist_to_maze(xy_l,xy_sampled_all):
     
     return dist
 
-def classify_latent(map_latent,position_tsdf,speed_tsd,tmaze_xy_sampled_all,speed_thresh=5,dist_to_maze_thresh=5,min_immobility_fraction=0.8,min_run_time=10,min_off_maze_time=10):
+def classify_latent(map_latent,position_tsdf,speed_tsd,tmaze_xy_sampled_all,speed_thresh=5,dist_to_maze_thresh=5,min_run_time=10,min_off_maze_time=10):
     '''
     classsify into: spatial-running, immobility, off-maze
-        immobility: fraction of time below speed_thresh is above min_immobility_fraction
+        
         spatial-running: during high speed, more time bin than min_time_bin
+        immobility: not enough running time; 
         off-maze: certain amount of high speed time outside the maze
         get rid of off-maze from spatial-running
-    immobility and off maze can co-exist
+    so if both spatial and immobility, count as spatial; this is a generous defitiion for spatial but stringent for non-spatial
     there will be edge cases, ignore for now (e.g. some off maze, some immobility; sporadic; ignore for now)
     '''
     speed_tsd = speed_tsd.interpolate(map_latent)
@@ -69,15 +70,15 @@ def classify_latent(map_latent,position_tsdf,speed_tsd,tmaze_xy_sampled_all,spee
         latent_run_index=occurance_index_per_speed_level[1]
         latent_immobility_index=occurance_index_per_speed_level[0]
         latent_immobility_fraction = (len(latent_immobility_index) / (len(latent_immobility_index) + len(latent_run_index)))
-        if latent_immobility_fraction > min_immobility_fraction:
-            is_immobility_all_latent[latent_i] = True
-            is_spatial_all_latent[latent_i] = False
-            is_off_maze_all_latent[latent_i] = False
-        else: # if not mainly immobility, then check if spatial
+        
+        else: 
             is_immobility_all_latent[latent_i] = False
             if len(latent_run_index)>min_run_time:
                 is_spatial_all_latent[latent_i] = True
-                
+            else:
+                is_spatial_all_latent[latent_i] = False
+                is_immobility_all_latent[latent_i] = True
+                is_off_maze_all_latent[latent_i] = False
             
         xy_l = position_tsdf[latent_run_index]['x','y'].d
         dist_to_maze=get_dist_to_maze(xy_l,tmaze_xy_sampled_all)
