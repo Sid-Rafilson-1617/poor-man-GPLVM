@@ -65,7 +65,7 @@ def classify_latent(map_latent,position_tsdf,speed_tsd,tmaze_xy_sampled_all,spee
     # possible_latent = np.unique(map_latent)
     latent_occurance_index_per_speed_level = get_latent_occurance_index_per_speed_level(map_latent,speed_tsd,[speed_thresh])
     for latent_i,occurance_index_per_speed_level in latent_occurance_index_per_speed_level.items():
-        latent_run_index=occurance_index_per_speed_level[2]
+        latent_run_index=occurance_index_per_speed_level[1]
         if len(latent_run_index)>min_run_time:
             is_spatial_all_latent[latent_i] = True
             is_immobility_all_latent[latent_i] = False
