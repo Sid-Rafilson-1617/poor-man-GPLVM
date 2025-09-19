@@ -12,6 +12,7 @@ import matplotlib
 import seaborn as sns
 import poor_man_gplvm.plot_helper as ph
 
+
 def get_latent_occurance_index_per_speed_level(map_latent,speed_tsd,speed_thresh_bins=[5]):
     '''
     get the indices of when a latent == MAP, divided by speed level
@@ -33,7 +34,17 @@ def get_latent_occurance_index_per_speed_level(map_latent,speed_tsd,speed_thresh
             latent_occurance_index_per_speed_level[latent_i][i] = np.nonzero(latent_run_ma)[0]
     return latent_occurance_index_per_speed_level
 
-def classify_latent(map_latent,position_tsdf,speed_tsd,speed_thresh=5,min_run_time=10,min_off_maze_time=10):
+def get_dist_to_maze(xy_l,xy_sampled_all):
+    '''
+    idea, first find closest sample points, then find the segment and line direction of them, 
+    then use the closest sample points as reference to compute projection distance
+
+    '''
+    dist = np.min(cdist(xy_l,xy_sampled_all),axis=1) # dist computed as shorted dist to sample
+    
+    return dist
+
+def classify_latent(map_latent,position_tsdf,speed_tsd,tmaze_xy_sampled_all,speed_thresh=5,min_run_time=10,min_off_maze_time=10):
     '''
     classsify into: spatial-running, immobility, off-maze
         spatial-running: during high speed, more time bin than min_time_bin
@@ -43,7 +54,7 @@ def classify_latent(map_latent,position_tsdf,speed_tsd,speed_thresh=5,min_run_ti
         then the rest
     '''
     speed_tsd = speed_tsd.interpolate(map_latent)
-    maze_coord_df,xy_sampled_all = preprt.get_tmaze_xy_sample(position_tsdf,place_bin_size=1.,do_plot=False)
+    # maze_coord_df,xy_sampled_all = preprt.get_tmaze_xy_sample(position_tsdf,place_bin_size=1.,do_plot=False)
     position_tsdf = position_tsdf.interpolate(map_latent)
     
     
@@ -63,7 +74,7 @@ def classify_latent(map_latent,position_tsdf,speed_tsd,speed_thresh=5,min_run_ti
             is_immobility_all_latent[latent_i] = True
             is_off_maze_all_latent[latent_i] = False
         xy_l = position_tsdf[latent_run_index]['x','y'].d
-        dist_to_maze=preprt.get_dist_to_maze(xy_l,xy_sampled_all)
+        dist_to_maze=get_dist_to_maze(xy_l,tmaze_xy_sampled_all)
         n_off_maze_time = (dist_to_maze >dist_to_maze_thresh).sum()
         if n_off_maze_time > min_off_maze_time:
             is_off_maze_all_latent[latent_i] = True
