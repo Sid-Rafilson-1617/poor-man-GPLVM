@@ -106,7 +106,7 @@ def classify_latent(map_latent,position_tsdf,speed_tsd,tmaze_xy_sampled_all,spee
     immobility_latent = is_immobility_all_latent.loc[is_immobility_all_latent].index
     off_maze_latent = is_off_maze_all_latent.loc[is_off_maze_all_latent].index
     nonspatial_latent=is_spatial_all_latent.loc[np.logical_not(is_spatial_all_latent)].index
-    cateogry_all_latent=np.zeros(len(is_spatial_all_latent))
+    cateogry_all_latent=np.zeros(len(is_spatial_all_latent),dtype=object)
     cateogry_all_latent[is_spatial_all_latent] = 'spatial'
     cateogry_all_latent[is_immobility_all_latent] = 'immobility'
     cateogry_all_latent[is_off_maze_all_latent] = 'off_maze'
