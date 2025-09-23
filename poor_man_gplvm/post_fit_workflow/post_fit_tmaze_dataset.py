@@ -471,7 +471,7 @@ def get_both_reward_latent(occurance_in_range_alllatent,frac_thresh=0.7,total_th
     print(tuned_to_both_reward)
     return tuned_to_both_reward
         
-def plot_multiple_latent_spatial_map(latent_ind_l,posterior_latent_map,behavior_tsdf,position_tsdf=None,speed_thresh=5,color_time=True):
+def plot_multiple_latent_spatial_map(latent_ind_l,posterior_latent_map,behavior_tsdf,position_tsdf=None,speed_thresh=5,color_time=True,kwargs_scatter = dict(s=10,alpha=0.5)):
     nplots = len(latent_ind_l)
     fig,axs=ph.subplots_wrapper(nplots,)
     if position_tsdf is None:
@@ -484,7 +484,7 @@ def plot_multiple_latent_spatial_map(latent_ind_l,posterior_latent_map,behavior_
                                         speed_col='speed_gauss',
                                         speed_category_thresh = [speed_thresh], # use this to categorize running and immobility
                                         cmap_name='Spectral_r',
-                                        kwargs_scatter = dict(s=10,alpha=0.5),
+                                        kwargs_scatter = kwargs_scatter,
                                         marker_per_speed_category = ['^','o'],
                                         do_plot_maze=True,
                                         position_tsdf=position_tsdf,ds=5,
