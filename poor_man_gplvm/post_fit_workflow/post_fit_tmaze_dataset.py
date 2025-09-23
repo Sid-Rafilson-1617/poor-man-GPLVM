@@ -176,13 +176,13 @@ from matplotlib.colors import Normalize
 
 def plot_latent_list_vs_position(latent_l, map_latent,behavior_tsdf,pos_col=['x','y'],fig=None,ax=None,
                                 speed_col='speed_gauss',
-                                speed_category_thresh = [2], # use this to categorize running and immobility
+                                speed_category_thresh = [5], # use this to categorize running and immobility
                                 cmap_name='Spectral_r',
                                 kwargs_scatter = dict(s=20,alpha=1),
                                 marker_per_speed_category = ['^','o'],
                                 do_plot_maze=False,
                                 position_tsdf=None,
-                                ds=10, # downsample for maze plot
+                                ds=5, # downsample for maze plot
                                 maze_c='grey',
                                 maze_alpha=0.3,
                                 hide_box=True,
@@ -192,6 +192,7 @@ def plot_latent_list_vs_position(latent_l, map_latent,behavior_tsdf,pos_col=['x'
                                 color_time=True,
                                ):
     '''
+    this plots one plot, can be multiple latents or single latent
     visualize the distribution of some latent as a function of 2d position
     plot running and immobility with different marker shape
     latent_l: n_latent, the selected latent to be plotted
