@@ -182,7 +182,7 @@ def plot_latent_list_vs_position(latent_l, map_latent,behavior_tsdf,pos_col=['x'
                                 marker_per_speed_category = ['^','o'],
                                 do_plot_maze=False,
                                 position_tsdf=None,
-                                ds=10,
+                                ds=10, # downsample for maze plot
                                 maze_c='grey',
                                 maze_alpha=0.3,
                                 hide_box=True,
@@ -246,7 +246,8 @@ def plot_latent_list_vs_position(latent_l, map_latent,behavior_tsdf,pos_col=['x'
             try:
                 
                 if not color_time:
-                    ax.scatter(behavior_tsdf[mask][pos_col[0]].values,behavior_tsdf[mask][pos_col[1]].values,c=colors[ii],marker=s,**kwargs_scatter)
+                    # ax.scatter(behavior_tsdf[mask][pos_col[0]].values,behavior_tsdf[mask][pos_col[1]].values,c=colors[ii],marker=s,**kwargs_scatter)
+                    ax.scatter(behavior_tsdf[mask][pos_col[0]].values,behavior_tsdf[mask][pos_col[1]].values,edgecolors=colors[ii],facecolors='none',marker=s,**kwargs_scatter)
                 else: # if color based on time
                     ax.scatter(behavior_tsdf[mask][pos_col[0]].values,behavior_tsdf[mask][pos_col[1]].values,edgecolors=colors,facecolors='none',marker=s,**kwargs_scatter)
                     
