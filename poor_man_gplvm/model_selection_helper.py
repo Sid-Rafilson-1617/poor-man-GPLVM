@@ -328,7 +328,7 @@ def get_jump_consensus_shuffle(jump_p, jump_p_all_chain, chain_index, n_shuffle=
     frac_consensus_distribution = []
     key_list = jr.split(key, n_shuffle)
     
-    for i in range(n_shuffle):
+    for i in tqdm.trange(n_shuffle):
         # Circularly shift each chain independently
         shuffled_chains = []
         chain_keys = jr.split(key_list[i], n_other_chains)
