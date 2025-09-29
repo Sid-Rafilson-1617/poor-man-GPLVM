@@ -647,22 +647,3 @@ def analyze_peri_transition_jump_consensus(behavior_tsdf_aligned, trial_interval
     }
 
 
-# Example usage - replace your original code with:
-# results = analyze_transition_consensus(behavior_tsdf_aligned, trial_intervals, jump_binary_consensus, 
-#                                      lin_pt=115, transition_type='arrival', win=1, n_shuffle=10)
-# transition_ts = results['transition_ts']
-# frac_d = results['consensus_fractions'] 
-# frac_sh_l = results['shuffle_fractions'][1]  # for win_size_int=1
-
-# Original code (now organized):
-lin_pt = 115
-win = 1
-transition_type = 'arrival'
-
-transition_ts = find_transition_times(behavior_tsdf_aligned, trial_intervals, lin_pt, transition_type)
-peri_transition_has_jump_consensus = nap.compute_perievent_continuous(jump_binary_consensus, transition_ts, win)
-frac_d = compute_consensus_fractions_by_window(peri_transition_has_jump_consensus)
-
-n_shuffle = 10
-win_size_int = 1
-frac_sh_l = compute_shuffle_consensus_fractions(jump_binary_consensus, transition_ts, win, win_size_int, n_shuffle)
