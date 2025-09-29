@@ -346,8 +346,11 @@ def get_jump_consensus_shuffle(jump_p, jump_p_all_chain, chain_index, n_shuffle=
     # Broadcast to create shifted indices: shape (n_shuffle, n_other_chains, n_time)
     shifted_indices = (time_indices[None, None, :] - shift_amounts[:, :, None]) % n_time
     
-    # Apply shifts to all chains and shuffles at once: shape (n_shuffle, n_time, n_other_chains)
+    # Apply shifts to all chains and shuffles at once: shape (n_shuffle, n_other_chains, n_time)
     shuffled_other_chains = jump_p_other_chains[shifted_indices, jnp.arange(n_other_chains)[None, :, None]]
+    
+    # Transpose to get the right shape: (n_shuffle, n_time, n_other_chains)
+    shuffled_other_chains = shuffled_other_chains.transpose(0, 2, 1)
     
     # Reconstruct full shuffled arrays for all shuffles at once
     # Shape: (n_shuffle, n_time, n_total_chains)
