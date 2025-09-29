@@ -328,11 +328,16 @@ def get_jump_consensus_shuffle(jump_p, jump_p_all_chain, chain_index, n_shuffle=
     n_time, n_other_chains = jump_p_other_chains.shape
     
     # Generate all random shift amounts at once for vectorization
-    keys = jr.split(key, n_shuffle * n_other_chains)
-    shift_keys = keys.reshape(n_shuffle, n_other_chains)
+    # Split keys for each shuffle
+    shuffle_keys = jr.split(key, n_shuffle)
     
-    # Generate shift amounts: shape (n_shuffle, n_other_chains)
-    shift_amounts = jr.randint(shift_keys, shape=(n_shuffle, n_other_chains), minval=0, maxval=n_time)
+    # For each shuffle, generate shift amounts for all chains
+    def generate_shifts_for_shuffle(shuffle_key):
+        chain_keys = jr.split(shuffle_key, n_other_chains)
+        return jr.randint(chain_keys, shape=(n_other_chains,), minval=0, maxval=n_time)
+    
+    # Vectorize over all shuffles: shape (n_shuffle, n_other_chains)
+    shift_amounts = jax.vmap(generate_shifts_for_shuffle)(shuffle_keys)
     
     # Vectorized circular shift using advanced indexing
     # Create indices for all shifts at once
