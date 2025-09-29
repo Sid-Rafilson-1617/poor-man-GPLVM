@@ -5,6 +5,7 @@ import itertools
 import pandas as pd
 from typing import Dict, List, Any
 from poor_man_gplvm import PoissonGPLVMJump1D,GaussianGPLVMJump1D,PoissonGPLVM1D,GaussianGPLVM1D
+import jax
 import jax.random as jr 
 import numpy as np
 import jax.numpy as jnp
@@ -316,64 +317,99 @@ def get_jump_consensus_shuffle(jump_p, jump_p_all_chain, chain_index, n_shuffle=
         - 'std': standard deviation of the distribution
     '''
     
+    # Convert inputs to JAX arrays for vectorization
+    jump_p = jnp.array(jump_p)
+    jump_p_all_chain = jnp.array(jump_p_all_chain)
+    
     # Remove the reference chain from jump_p_all_chain for shuffling
-    other_chains_mask = np.arange(jump_p_all_chain.shape[1]) != chain_index
+    other_chains_mask = jnp.arange(jump_p_all_chain.shape[1]) != chain_index
     jump_p_other_chains = jump_p_all_chain[:, other_chains_mask]
     
-    # Adjust consensus threshold since we're excluding the reference chain
-    # Original: consensus_thresh * n_total_chains
-    # New: consensus_thresh * (n_total_chains - 1) since reference chain is excluded
-    n_other_chains = jump_p_other_chains.shape[1]
-    adjusted_consensus_thresh = consensus_thresh
+    n_time, n_other_chains = jump_p_other_chains.shape
     
-    frac_consensus_distribution = []
-    key_list = jr.split(key, n_shuffle)
+    # Generate all random shift amounts at once for vectorization
+    keys = jr.split(key, n_shuffle * n_other_chains)
+    shift_keys = keys.reshape(n_shuffle, n_other_chains)
     
-    for i in tqdm.trange(n_shuffle):
-        # Circularly shift each chain independently
-        shuffled_chains = []
-        chain_keys = jr.split(key_list[i], n_other_chains)
-        
-        for j in range(n_other_chains):
-            # Generate random shift amount for this chain
-            shift_amount = jr.randint(chain_keys[j], shape=(), minval=0, maxval=jump_p_other_chains.shape[0])
-            # Circularly shift the chain
-            shifted_chain = jnp.roll(jump_p_other_chains[:, j], shift_amount)
-            shuffled_chains.append(shifted_chain)
-        
-        # Stack the shuffled chains back
-        shuffled_jump_p_other_chains = jnp.stack(shuffled_chains, axis=1)
-        
-        # Reconstruct full jump_p_all_chain with shuffled other chains
-        shuffled_jump_p_all_chain = jnp.zeros_like(jump_p_all_chain)
-        shuffled_jump_p_all_chain = shuffled_jump_p_all_chain.at[:, chain_index].set(jump_p)
-        shuffled_jump_p_all_chain = shuffled_jump_p_all_chain.at[:, other_chains_mask].set(shuffled_jump_p_other_chains)
-        
-        # Compute consensus for this shuffle (only need frac_consensus)
-        frac_consensus, _, _ = get_jump_consensus(
-            jump_p, 
-            shuffled_jump_p_all_chain, 
-            window_size=window_size, 
-            jump_p_thresh=jump_p_thresh, 
-            consensus_thresh=adjusted_consensus_thresh
-        )
-        
-        frac_consensus_distribution.append(frac_consensus)
+    # Generate shift amounts: shape (n_shuffle, n_other_chains)
+    shift_amounts = jr.randint(shift_keys, shape=(n_shuffle, n_other_chains), minval=0, maxval=n_time)
     
-    frac_consensus_distribution = np.array(frac_consensus_distribution)
+    # Vectorized circular shift using advanced indexing
+    # Create indices for all shifts at once
+    time_indices = jnp.arange(n_time)  # shape: (n_time,)
+    # Broadcast to create shifted indices: shape (n_shuffle, n_other_chains, n_time)
+    shifted_indices = (time_indices[None, None, :] - shift_amounts[:, :, None]) % n_time
+    
+    # Apply shifts to all chains and shuffles at once: shape (n_shuffle, n_time, n_other_chains)
+    shuffled_other_chains = jump_p_other_chains[shifted_indices, jnp.arange(n_other_chains)[None, :, None]]
+    
+    # Reconstruct full shuffled arrays for all shuffles at once
+    # Shape: (n_shuffle, n_time, n_total_chains)
+    n_total_chains = jump_p_all_chain.shape[1]
+    shuffled_all_chains = jnp.zeros((n_shuffle, n_time, n_total_chains))
+    
+    # Set reference chain (same for all shuffles)
+    shuffled_all_chains = shuffled_all_chains.at[:, :, chain_index].set(jump_p[None, :])
+    # Set shuffled other chains
+    shuffled_all_chains = shuffled_all_chains.at[:, :, other_chains_mask].set(shuffled_other_chains)
+    
+    # Fully vectorized consensus calculation using JAX operations
+    # Find jump time points for the reference chain
+    is_jump = jump_p >= jump_p_thresh  # shape: (n_time,)
+    jump_time_indices = jnp.where(is_jump)[0]
+    n_jumps = len(jump_time_indices)
+    
+    if n_jumps == 0:
+        # No jumps found, return zero consensus for all shuffles
+        frac_consensus_distribution = jnp.zeros(n_shuffle)
+    else:
+        # Pre-compute window bounds for all jumps
+        # Shape: (n_jumps,)
+        window_starts = jnp.maximum(0, jump_time_indices - window_size)
+        window_ends = jnp.minimum(n_time, jump_time_indices + window_size + 1)
+        
+        # Create a function to check consensus for one jump across all shuffles
+        def check_consensus_for_jump(start_idx, end_idx):
+            """Check consensus for a single jump across all shuffles"""
+            # Extract window data for all shuffles: shape (n_shuffle, window_length, n_chains)
+            window_data = shuffled_all_chains[:, start_idx:end_idx, :]
+            
+            # Check if each chain has any jump in the window for each shuffle
+            # Shape: (n_shuffle, n_chains)
+            chain_has_jump = jnp.any(window_data > jump_p_thresh, axis=1)
+            
+            # Calculate consensus fraction for each shuffle
+            # Shape: (n_shuffle,)
+            consensus_fractions = jnp.mean(chain_has_jump, axis=1)
+            
+            # Check if consensus threshold is met for each shuffle
+            # Shape: (n_shuffle,)
+            has_consensus = consensus_fractions >= consensus_thresh
+            
+            return has_consensus
+        
+        # Vectorize the consensus check over all jumps using vmap
+        vmap_check_consensus = jax.vmap(check_consensus_for_jump, in_axes=(0, 0), out_axes=0)
+        
+        # Apply to all jumps at once: shape (n_jumps, n_shuffle)
+        all_consensus_results = vmap_check_consensus(window_starts, window_ends)
+        
+        # Calculate the fraction of jumps with consensus for each shuffle
+        # Shape: (n_shuffle,)
+        frac_consensus_distribution = jnp.mean(all_consensus_results, axis=0)
     
     # Calculate statistics
-    percentile_2_5 = np.percentile(frac_consensus_distribution, 2.5)
-    percentile_97_5 = np.percentile(frac_consensus_distribution, 97.5)
-    mean_val = np.mean(frac_consensus_distribution)
-    std_val = np.std(frac_consensus_distribution)
+    percentile_2_5 = jnp.percentile(frac_consensus_distribution, 2.5)
+    percentile_97_5 = jnp.percentile(frac_consensus_distribution, 97.5)
+    mean_val = jnp.mean(frac_consensus_distribution)
+    std_val = jnp.std(frac_consensus_distribution)
     
     return {
-        'frac_consensus_distribution': frac_consensus_distribution,
-        'percentile_2_5': percentile_2_5,
-        'percentile_97_5': percentile_97_5,
-        'mean': mean_val,
-        'std': std_val
+        'frac_consensus_distribution': np.array(frac_consensus_distribution),
+        'percentile_2_5': float(percentile_2_5),
+        'percentile_97_5': float(percentile_97_5),
+        'mean': float(mean_val),
+        'std': float(std_val)
     }
 
 
