@@ -11,6 +11,7 @@ import matplotlib.colorbar as colorbar
 import matplotlib
 import seaborn as sns
 import poor_man_gplvm.plot_helper as ph
+import tqdm
 
 
 def get_latent_occurance_index_per_speed_level(map_latent,speed_tsd,speed_thresh_bins=[5]):
