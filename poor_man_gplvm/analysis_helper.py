@@ -340,7 +340,7 @@ def fit_time_prepost_interaction(
     }
 
 
-def get_sequence_occurence(sequence,post_latent_map,latent_distance_thresh=1,):
+def get_sequence_occurence_old(sequence,post_latent_map,latent_distance_thresh=1,):
     '''
     find times when a sequence of latents occurs
     latent_distance_thresh gives some wiggle room
@@ -360,6 +360,53 @@ def get_sequence_occurence(sequence,post_latent_map,latent_distance_thresh=1,):
             seq_occurence_ind.append(i)
     if isinstance(post_latent_map,nap.Tsd):
         seq_occurence_t = nap.Ts(post_latent_map.t[seq_occurence_ind])
+    else:
+        seq_occurence_t = nap.Ts(seq_occurence_ind)
+    
+    return seq_occurence_t, seq_occurence_ind
+
+def get_sequence_occurence(sequence,post_latent_map,latent_distance_thresh=1,):
+    '''
+    find times when a sequence of latents occurs
+    latent_distance_thresh gives some wiggle room
+
+    sequence: array/list of latents
+    post_latent_map: np.array or nap.Tsd, latent MAP at each time point
+
+    return:
+    seq_occurence_t: nap.Ts, time points when the sequence occurs
+    seq_occurence_ind: array, indices when the sequence occurs
+    
+    Optimized version using vectorized numpy operations
+    '''
+    sequence = np.array(sequence)
+    seq_len = len(sequence)
+    
+    # Extract data array from pynapple object if needed
+    if isinstance(post_latent_map, nap.Tsd):
+        data = post_latent_map.d
+        times = post_latent_map.t
+    else:
+        data = np.asarray(post_latent_map)
+        times = None
+    
+    # Handle edge case
+    if len(data) < seq_len:
+        if times is not None:
+            return nap.Ts([]), np.array([], dtype=int)
+        else:
+            return nap.Ts([]), []
+    
+    # Vectorized approach: create sliding windows and check all at once
+    # For each position in sequence, check if it matches at all possible starting indices
+    matches = np.ones(len(data) - seq_len + 1, dtype=bool)
+    for offset, target_val in enumerate(sequence):
+        matches &= (np.abs(data[offset:offset + len(matches)] - target_val) <= latent_distance_thresh)
+    
+    seq_occurence_ind = np.nonzero(matches)[0]
+    
+    if times is not None:
+        seq_occurence_t = nap.Ts(times[seq_occurence_ind])
     else:
         seq_occurence_t = nap.Ts(seq_occurence_ind)
     
