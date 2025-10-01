@@ -340,30 +340,6 @@ def fit_time_prepost_interaction(
     }
 
 
-def get_sequence_occurence_old(sequence,post_latent_map,latent_distance_thresh=1,):
-    '''
-    find times when a sequence of latents occurs
-    latent_distance_thresh gives some wiggle room
-
-    sequence: array/list of latents
-    post_latent_map: np.array or nap.Tsd, latent MAP at each time point
-
-    return:
-    seq_occurence_t: nap.Ts, time points when the sequence occurs
-    seq_occurence_ind: array, indices when the sequence occurs
-    '''
-    sequence = np.array(sequence)
-    seq_len = len(sequence)
-    seq_occurence_ind = []
-    for i in range(len(post_latent_map)-seq_len+1):
-        if np.all(np.abs(post_latent_map[i:i+seq_len]-sequence) <= latent_distance_thresh):
-            seq_occurence_ind.append(i)
-    if isinstance(post_latent_map,nap.Tsd):
-        seq_occurence_t = nap.Ts(post_latent_map.t[seq_occurence_ind])
-    else:
-        seq_occurence_t = nap.Ts(seq_occurence_ind)
-    
-    return seq_occurence_t, seq_occurence_ind
 
 def get_sequence_occurence(sequence,post_latent_map,latent_distance_thresh=1,):
     '''
