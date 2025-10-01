@@ -653,6 +653,7 @@ def analyze_peri_transition_jump_consensus(behavior_tsdf_aligned, trial_interval
 def latent_jump_triggered_analysis(posterior_latent_map,behavior_tsdf,spk_mat,tuning_fit,
                                      t=None,seq=None,latent_distance_thresh=1,peri_event_win=2,cols=None,contrast_axis_latent_window=0):
     '''
+    for a given jump, find all occurences, get peri event of some features (behavior and contrastive axis projection)
     either give seq or t
     t is the time in second for selecting the jump
     seq is the (pre_latent,post_latent) pair
@@ -680,5 +681,32 @@ def latent_jump_triggered_analysis(posterior_latent_map,behavior_tsdf,spk_mat,tu
     proj,contrast_axis=vlj.get_contrast_axis_and_proj(spk_mat,tuning_fit,seq[0],seq[1],map_state_win=contrast_axis_latent_window)
     peri_event_d['contrastive_projection'] = nap.compute_perievent_continuous(proj,seq_occurence_t,peri_event_win)
 
-    return peri_event_d
+    return peri_event_d,seq_occurence_t
         
+def get_null_contrastive_projection(spk_mat,tuning_fit,posterior_latent_map,jump_p_all_chain,jump_p_thresh=0.1,contrast_axis_latent_window=0,n_shuffle=100):
+    '''
+    spk_mat: n_time x n_neuron
+    tuning_fit: n_latent x n_neuron
+    jump_p_all_chain: either n_time x n_chain or n_time; if has n_chain dimension, then exclude times when any chain is above threshold
+    '''
+    if jump_p_all_chain.ndim == 1:
+        jump_p_all_chain = jump_p_all_chain.reshape(-1,1)
+    n_chain = jump_p_all_chain.shape[1]
+    n_time = jump_p_all_chain.shape[0]
+    null_proj_l = []
+    
+    if jump_p_all_chain.ndim == 1:
+        non_jump_all_chain = jump_p_all_chain<jump_p_thresh
+    else:
+        non_jump_all_chain = (jump_p_all_chain<jump_p_thresh).all(axis=1)
+    non_jump_all_chain = nap.Tsd(d=non_jump_all_chain,t=spk_mat.t)
+    consec_diff = np.zeros(len(non_jump_all_chain.d))
+    consec_diff[1:]=posterior_latent_map[:-1].d!=posterior_latent_map[1:].d
+
+    ind_all = np.arange(len(non_jump_all_chain))
+    ma=np.logical_and(consec_diff, non_jump_all_chain.d.astype(bool))
+    ind_to_select_from = ind_all[ma]
+
+    
+
+
