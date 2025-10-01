@@ -12,7 +12,8 @@ import matplotlib
 import seaborn as sns
 import poor_man_gplvm.plot_helper as ph
 import tqdm
-
+import poor_man_gplvm.analysis_helper as ah
+import poor_man_gplvm.vector_latent_jump as vlj
 
 def get_latent_occurance_index_per_speed_level(map_latent,speed_tsd,speed_thresh_bins=[5]):
     '''
@@ -649,3 +650,35 @@ def analyze_peri_transition_jump_consensus(behavior_tsdf_aligned, trial_interval
     }
 
 
+def latent_jump_triggered_analysis(posterior_latent_map,behavior_tsdf,spk_mat,tuning_fit,
+                                     t=None,seq=None,latent_distance_thresh=1,peri_event_win=2,cols=None,contrast_axis_latent_window=0):
+    '''
+    either give seq or t
+    t is the time in second for selecting the jump
+    seq is the (pre_latent,post_latent) pair
+    behavior_tsdf: nap.TsdFrame, features to do peri event on
+    '''
+    
+    if t is None:
+        assert seq is not None
+    else:
+        postjump_ind = posterior_latent_map.get_slice(t).start
+        prejump_ind = postjump_ind - 1
+        seq = posterior_latent_map.d[prejump_ind:postjump_ind]
+    
+    # find occurences of the sequence
+    seq_occurence_t,seq_occurence_ind = ah.get_sequence_occurence(seq,posterior_latent_map,latent_distance_thresh=latent_distance_thresh)
+
+
+    if cols is None:
+        cols = behavior_tsdf.columns
+    peri_event_d = {}
+    for col in cols:
+        peri_event_d[col] = nap.compute_perievent_continuous(behavior_tsdf[col],seq_occurence_t,peri_event_win)
+    
+    # get the peri event of contrastive axis projection
+    proj,contrast_axis=vlj.get_contrast_axis_and_proj(spk_mat,tuning_fit,seq[0],seq[1],map_state_win=contrast_axis_latent_window)
+    peri_event_d['contrastive_projection'] = nap.compute_perievent_continuous(contrast_axis,seq_occurence_t,peri_event_win)
+
+    return peri_event_d
+        
