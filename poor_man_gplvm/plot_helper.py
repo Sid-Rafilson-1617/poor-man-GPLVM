@@ -1087,7 +1087,10 @@ def plot_data_shuffle_time_series(data, shuffle, align_at='middle', fig=None, ax
     '''
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
-    
+    if isinstance(data,nap.Tsd):
+        t_l = data.t
+    else:
+        t_l = np.arange(len(data))
     data = np.asarray(data)
     shuffle = np.asarray(shuffle)
     
@@ -1108,7 +1111,7 @@ def plot_data_shuffle_time_series(data, shuffle, align_at='middle', fig=None, ax
     shuffle_upper = np.nanquantile(shuffle_aligned, 0.975, axis=1)
     
     # Time axis
-    time_axis = np.arange(len(data))
+    time_axis = t_l
     
     # Plot shuffle as filled area
     ax.fill_between(time_axis, shuffle_lower, shuffle_upper, 
@@ -1120,6 +1123,7 @@ def plot_data_shuffle_time_series(data, shuffle, align_at='middle', fig=None, ax
     ax.legend(bbox_to_anchor=[1.05,1],frameon=False)
     ax.set_xlabel('Time')
     ax.set_ylabel('Value')
+    ax.set_xticks(t_l[0],t_l[mid_idx],t_l[-1])
     sns.despine(ax=ax)
     
     return fig, ax
