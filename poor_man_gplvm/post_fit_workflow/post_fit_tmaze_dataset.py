@@ -683,7 +683,7 @@ def latent_jump_triggered_analysis(posterior_latent_map,behavior_tsdf,spk_mat,tu
 
     return peri_event_d,seq_occurence_t
         
-def get_null_contrastive_projection(spk_mat,tuning_fit,posterior_latent_map,jump_p_all_chain,jump_p_thresh=0.1,contrast_axis_latent_window=0,n_shuffle=100):
+def get_null_contrastive_projection(spk_mat,tuning_fit,posterior_latent_map,jump_p_all_chain,jump_p_thresh=0.1,contrast_axis_latent_window=0,n_shuffle=100,peri_event_win=2,latent_distance_thresh=1):
     '''
     spk_mat: n_time x n_neuron
     tuning_fit: n_latent x n_neuron
@@ -734,11 +734,11 @@ def get_null_contrastive_projection(spk_mat,tuning_fit,posterior_latent_map,jump
         time_contrast_axis += time.time() - t0
         
         t0 = time.time()
-        sh_seq_occ_t,sh_seq_occ_ind=ah.get_sequence_occurence(sh_seq,posterior_latent_map,)
+        sh_seq_occ_t,sh_seq_occ_ind=ah.get_sequence_occurence(sh_seq,posterior_latent_map[(posterior_latent_map.t>(proj_sh.t[0]+peri_event_win)) & (posterior_latent_map.t<(proj_sh.t[-1]-peri_event_win))],latent_distance_thresh=latent_distance_thresh)
         time_seq_occurrence += time.time() - t0
         
         t0 = time.time()
-        proj_sh_peri_event=nap.compute_perievent_continuous(proj_sh,sh_seq_occ_t,2).mean(axis=1)
+        proj_sh_peri_event=nap.compute_perievent_continuous(proj_sh,sh_seq_occ_t,peri_event_win).mean(axis=1)
         time_perievent += time.time() - t0
         
         proj_sh_peri_event_l.append(proj_sh_peri_event)
