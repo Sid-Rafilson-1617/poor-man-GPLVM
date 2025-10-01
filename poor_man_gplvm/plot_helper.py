@@ -1129,3 +1129,41 @@ def plot_data_shuffle_time_series(data, shuffle, align_at='middle', fig=None, ax
     sns.despine(ax=ax)
     
     return fig, ax
+
+def add_scalebar(ax, x, y, length, label=None, 
+                 orientation='horizontal', 
+                 linewidth=2, color='k', fontsize=10, **kwargs):
+    """
+    Add a scale bar to a matplotlib Axes.
+
+    Parameters
+    ----------
+    ax : matplotlib Axes
+        The axes to draw on.
+    x, y : float
+        Starting location (data coordinates).
+    length : float
+        Length of the scale bar (data units).
+    label : str, optional
+        Text label for the bar.
+    orientation : str, 'horizontal' or 'vertical'
+        Orientation of the scale bar.
+    linewidth : float
+        Width of the line.
+    color : str
+        Line and text color.
+    fontsize : int
+        Size of the label text.
+    kwargs : dict
+        Passed to ax.plot (for extra styling).
+    """
+    if orientation == 'horizontal':
+        ax.plot([x, x+length], [y, y], color=color, linewidth=linewidth, **kwargs)
+        if label:
+            ax.text(x + length/2, y - 0.05*length, label,
+                    ha='center', va='top', color=color, fontsize=fontsize)
+    else:
+        ax.plot([x, x], [y, y+length], color=color, linewidth=linewidth, **kwargs)
+        if label:
+            ax.text(x - 0.05*length, y + length/2, label,
+                    ha='right', va='center', color=color, fontsize=fontsize)
