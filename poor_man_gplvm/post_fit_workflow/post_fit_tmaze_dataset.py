@@ -664,7 +664,7 @@ def latent_jump_triggered_analysis(posterior_latent_map,behavior_tsdf,spk_mat,tu
     else:
         postjump_ind = posterior_latent_map.get_slice(t).start
         prejump_ind = postjump_ind - 1
-        seq = posterior_latent_map.d[prejump_ind:postjump_ind]
+        seq = posterior_latent_map.d[prejump_ind:postjump_ind+1]
     
     # find occurences of the sequence
     seq_occurence_t,seq_occurence_ind = ah.get_sequence_occurence(seq,posterior_latent_map,latent_distance_thresh=latent_distance_thresh)
