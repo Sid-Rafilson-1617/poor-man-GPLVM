@@ -1054,7 +1054,7 @@ def plot_trajectories_on_maze_mark_events(position_tsdf,x_peri_jump,y_peri_jump,
         ax.scatter([st[0]],[st[1]],marker=start_marker,c=start_color)
         ax.scatter([x_peri_jump[-1,ind]],[y_peri_jump[-1,ind]],marker=end_marker,c=end_color)
         ax.scatter([x_peri_jump[midpt,ind]],[y_peri_jump[midpt,ind]],marker=midpoint_marker,c=midpoint_color,zorder=3)
-    sns.despine(ax=ax,bottom=True,left=True)
+    
     return fig,ax
 
 def plot_maze_background(spk_beh_df,ds=10,fig=None,ax=None,mode='line',**kwargs):
@@ -1066,6 +1066,8 @@ def plot_maze_background(spk_beh_df,ds=10,fig=None,ax=None,mode='line',**kwargs)
         ax.plot(spk_beh_df['x'].values[::ds],spk_beh_df['y'].values[::ds],**kwargs_)
     elif mode=='scatter':
         ax.scatter(spk_beh_df['x'].values[::ds],spk_beh_df['y'].values[::ds],s=1,**kwargs_)
+    sns.despine(ax=ax,bottom=True,left=True)
+    ax.axis('off')
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     return fig,ax
