@@ -699,7 +699,7 @@ def get_null_contrastive_projection(spk_mat,tuning_fit,posterior_latent_map,jump
     n_time = jump_p_all_chain.shape[0]
     null_proj_l = []
     
-    t_start = time.time()
+    
     if jump_p_all_chain.ndim == 1:
         non_jump_all_chain = jump_p_all_chain<jump_p_thresh
     else:
