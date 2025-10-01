@@ -712,16 +712,18 @@ def get_null_contrastive_projection(spk_mat,tuning_fit,posterior_latent_map,jump
     ma=np.logical_and(consec_diff, non_jump_all_chain.d.astype(bool))
     ind_to_select_from = ind_all[ma]
 
-    sh_ind = np.random.choice(ind_to_select_from,n_shuffle)
+    sh_ind = np.random.choice(ind_to_select_from,n_shuffle,replace=False)
     
 
     proj_sh_peri_event_l = []
+    sh_seq_l = []
     
     
     for i_sh, si in enumerate(tqdm.tqdm(sh_ind)):
         
         
         sh_seq=posterior_latent_map[si-1],posterior_latent_map[si]
+        sh_seq_l.append(sh_seq)
 
         proj_sh,contrast_axis_sh=vlj.get_contrast_axis_and_proj(spk_mat,tuning_fit,posterior_latent_map[si-1],posterior_latent_map[si],map_state_win=contrast_axis_latent_window)
         
@@ -733,7 +735,7 @@ def get_null_contrastive_projection(spk_mat,tuning_fit,posterior_latent_map,jump
         proj_sh_peri_event_l.append(proj_sh_peri_event)
 
     proj_sh_peri_event_l=np.stack(proj_sh_peri_event_l,axis=1)
+    sh_seq_l = np.array(sh_seq_l)
     
-    
-    return proj_sh_peri_event_l
+    return proj_sh_peri_event_l,sh_seq_l
 
