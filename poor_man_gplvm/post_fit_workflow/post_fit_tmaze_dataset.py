@@ -13,7 +13,7 @@ import seaborn as sns
 import poor_man_gplvm.plot_helper as ph
 import tqdm
 import poor_man_gplvm.analysis_helper as ah
-import poor_man_gplvm.vector_latent_jump as vlj
+import poor_man_gplvm.verify_latent_jump as vlj
 
 def get_latent_occurance_index_per_speed_level(map_latent,speed_tsd,speed_thresh_bins=[5]):
     '''
