@@ -689,9 +689,9 @@ def get_null_contrastive_projection(spk_mat,tuning_fit,posterior_latent_map,jump
     tuning_fit: n_latent x n_neuron
     jump_p_all_chain: either n_time x n_chain or n_time; if has n_chain dimension, then exclude times when any chain is above threshold
     '''
-    import time
     
-    t_start_total = time.time()
+    
+    
     
     if jump_p_all_chain.ndim == 1:
         jump_p_all_chain = jump_p_all_chain.reshape(-1,1)
@@ -717,43 +717,23 @@ def get_null_contrastive_projection(spk_mat,tuning_fit,posterior_latent_map,jump
 
     proj_sh_peri_event_l = []
     
-    # Timing accumulators for loop operations
-    time_get_seq = 0
-    time_contrast_axis = 0
-    time_seq_occurrence = 0
-    time_perievent = 0
     
     for i_sh, si in enumerate(tqdm.tqdm(sh_ind)):
         
-        t0 = time.time()
+        
         sh_seq=posterior_latent_map[si-1],posterior_latent_map[si]
-        time_get_seq += time.time() - t0
-        
-        t0 = time.time()
+
         proj_sh,contrast_axis_sh=vlj.get_contrast_axis_and_proj(spk_mat,tuning_fit,posterior_latent_map[si-1],posterior_latent_map[si],map_state_win=contrast_axis_latent_window)
-        time_contrast_axis += time.time() - t0
         
-        t0 = time.time()
         sh_seq_occ_t,sh_seq_occ_ind=ah.get_sequence_occurence(sh_seq,posterior_latent_map[(posterior_latent_map.t>(proj_sh.t[0]+peri_event_win)) & (posterior_latent_map.t<(proj_sh.t[-1]-peri_event_win))],latent_distance_thresh=latent_distance_thresh)
-        time_seq_occurrence += time.time() - t0
         
-        t0 = time.time()
         proj_sh_peri_event=nap.compute_perievent_continuous(proj_sh,sh_seq_occ_t,peri_event_win).mean(axis=1)
-        time_perievent += time.time() - t0
+        
         
         proj_sh_peri_event_l.append(proj_sh_peri_event)
 
     proj_sh_peri_event_l=np.stack(proj_sh_peri_event_l,axis=1)
     
-    t_total = time.time() - t_start_total
-    
-    print(f"\n=== Timing Summary (n_shuffle={n_shuffle}) ===")
-    print(f"Get sequence: {time_get_seq:.3f}s ({100*time_get_seq/t_total:.1f}%)")
-    print(f"Get contrast axis & proj: {time_contrast_axis:.3f}s ({100*time_contrast_axis/t_total:.1f}%)")
-    print(f"Get sequence occurrence: {time_seq_occurrence:.3f}s ({100*time_seq_occurrence/t_total:.1f}%)")
-    print(f"Compute perievent: {time_perievent:.3f}s ({100*time_perievent/t_total:.1f}%)")
-    print(f"Total time: {t_total:.3f}s")
-    print(f"Average per shuffle: {t_total/n_shuffle:.3f}s")
     
     return proj_sh_peri_event_l
 
