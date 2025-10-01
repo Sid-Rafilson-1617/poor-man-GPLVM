@@ -1035,7 +1035,7 @@ def median_plot(**kwargs):
     return g
 
 
-def plot_trajectories_on_maze_mark_events(position_tsdf,x_peri_jump,y_peri_jump,fig=None,ax=None,ds=5,start_marker='<',end_marker='o',midpoint_marker='x',start_color='C0',end_color='C1',midpoint_color='red',trajectory_color='C0',trajectory_alpha=0.4):
+def plot_trajectories_on_maze_mark_events(position_tsdf,x_peri_jump,y_peri_jump,fig=None,ax=None,ds=5,start_marker='<',end_marker='o',midpoint_marker='x',start_color='C0',end_color='C1',midpoint_color='red',trajectory_color='C0',trajectory_alpha=0.4,midpoint_label='jump'):
     '''
     position_tsdf: nap.TsdFrame, contain x and y columns
     x_peri_jump,y_peri_jump: array, shape (n_time,n_trajectory)
@@ -1051,9 +1051,10 @@ def plot_trajectories_on_maze_mark_events(position_tsdf,x_peri_jump,y_peri_jump,
         midpt = x_peri_jump.shape[0]//2
         ax.plot(x_peri_jump[:,ind],y_peri_jump[:,ind],c=trajectory_color,alpha=trajectory_alpha)
         st = x_peri_jump[0,ind],y_peri_jump[0,ind]
-        ax.scatter([st[0]],[st[1]],marker=start_marker,c=start_color)
-        ax.scatter([x_peri_jump[-1,ind]],[y_peri_jump[-1,ind]],marker=end_marker,c=end_color)
-        ax.scatter([x_peri_jump[midpt,ind]],[y_peri_jump[midpt,ind]],marker=midpoint_marker,c=midpoint_color,zorder=3)
+        ax.scatter([st[0]],[st[1]],marker=start_marker,c=start_color,label='start')
+        ax.scatter([x_peri_jump[-1,ind]],[y_peri_jump[-1,ind]],marker=end_marker,c=end_color,label='end')
+        ax.scatter([x_peri_jump[midpt,ind]],[y_peri_jump[midpt,ind]],marker=midpoint_marker,c=midpoint_color,zorder=3,label=midpoint_label)
+    ax.legend(bbox_to_anchor=[1.05,1],frameon=False)
     
     return fig,ax
 
