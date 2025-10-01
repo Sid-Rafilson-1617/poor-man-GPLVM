@@ -1112,7 +1112,7 @@ def plot_data_shuffle_time_series(data, shuffle, align_at='middle', fig=None, ax
     # Plot data as line
     ax.plot(time_axis, data, color=data_color, linewidth=data_lw, label=data_label)
     
-    ax.legend(bbox_to_anchor=[1.05,1])
+    ax.legend(bbox_to_anchor=[1.05,1],frameon=False)
     ax.set_xlabel('Time')
     ax.set_ylabel('Value')
     sns.despine(ax=ax)
