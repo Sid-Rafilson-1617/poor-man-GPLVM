@@ -1078,7 +1078,7 @@ def plot_data_shuffle_time_series(data, shuffle, align_at='middle', fig=None, ax
     data: n_time
     shuffle: n_time x n_shuffle
 
-    align_at: if not None: if 'middle', align the shuffle mean and data at the middle time point
+    align_at: if not None: if 'middle', align each shuffle and data at the middle time point (this way to look at the change at the aligned time)
     '''
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
@@ -1086,18 +1086,21 @@ def plot_data_shuffle_time_series(data, shuffle, align_at='middle', fig=None, ax
     data = np.asarray(data)
     shuffle = np.asarray(shuffle)
     
-    # Calculate shuffle quantiles and mean
-    shuffle_mean = np.nanmean(shuffle, axis=1)
-    shuffle_lower = np.nanquantile(shuffle, 0.025, axis=1)
-    shuffle_upper = np.nanquantile(shuffle, 0.975, axis=1)
-    
-    # Align if requested
+    # Align each shuffle to data if requested
     if align_at == 'middle':
         mid_idx = len(data) // 2
-        offset = data[mid_idx] - shuffle_mean[mid_idx]
-        shuffle_mean += offset
-        shuffle_lower += offset
-        shuffle_upper += offset
+        # Calculate offset for each shuffle individually
+        shuffle_aligned = shuffle.copy()
+        for i in range(shuffle.shape[1]):
+            offset = data[mid_idx] - shuffle[mid_idx, i]
+            shuffle_aligned[:, i] += offset
+    else:
+        shuffle_aligned = shuffle
+    
+    # Calculate shuffle quantiles and mean from aligned shuffles
+    shuffle_mean = np.nanmean(shuffle_aligned, axis=1)
+    shuffle_lower = np.nanquantile(shuffle_aligned, 0.025, axis=1)
+    shuffle_upper = np.nanquantile(shuffle_aligned, 0.975, axis=1)
     
     # Time axis
     time_axis = np.arange(len(data))
