@@ -17,7 +17,7 @@ import seaborn as sns
 plt.rcParams['font.family'] = 'sans-serif'
 plt.rcParams['svg.fonttype'] = 'none'
 
-def save_fig(fig,fig_name,fig_dir='./figs',fig_format=['png','svg'],dpi=300,do_close=False):
+def save_fig(fig,fig_name,fig_dir='./figs',fig_format=['png','svg'],dpi=300,do_close=False,bbox_inches='standard'):
     '''
     save figure to fig_dir
     '''
@@ -27,7 +27,7 @@ def save_fig(fig,fig_name,fig_dir='./figs',fig_format=['png','svg'],dpi=300,do_c
     if not os.path.exists(fig_dir):
         os.makedirs(fig_dir)
     for fmt in fig_format:
-        fig.savefig(os.path.join(fig_dir,fig_name+f'.{fmt}'),dpi=dpi,bbox_inches='tight')
+        fig.savefig(os.path.join(fig_dir,fig_name+f'.{fmt}'),dpi=dpi,bbox_inches=bbox_inches)
         print(f'saved {fig_name}.{fmt} to {fig_dir}')
     if do_close:
         plt.close(fig)
