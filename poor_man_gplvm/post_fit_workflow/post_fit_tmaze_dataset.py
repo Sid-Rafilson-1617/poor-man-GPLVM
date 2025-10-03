@@ -197,6 +197,7 @@ def plot_latent_list_vs_position(latent_l, map_latent,behavior_tsdf,pos_col=['x'
                                 colorbar=False,
                                 background_mode='line',
                                 color_time=True,
+                                color='red',
                                ):
     '''
     this plots one plot, can be multiple latents or single latent
@@ -230,7 +231,8 @@ def plot_latent_list_vs_position(latent_l, map_latent,behavior_tsdf,pos_col=['x'
     # Plot running and immobility
     latent_l_ind = np.arange(len(latent_l)) 
     norm=Normalize(vmin=0,vmax=len(latent_l))
-    colors = cmap(norm(latent_l_ind)) # color based on the index of latent within latent_l, not the latent value
+    if color is None and len(latent_l_ind)>1: 
+        colors = cmap(norm(latent_l_ind)) # color based on the index of latent within latent_l, not the latent value
     
     # if only plotting one latent, then color based on time
     # time for all time points, not just the MAP time points; this way can compare across different latents and see temporal evoluation
@@ -485,7 +487,7 @@ def get_both_reward_latent(occurance_in_range_alllatent,frac_thresh=0.7,total_th
     print(tuned_to_both_reward)
     return tuned_to_both_reward
         
-def plot_multiple_latent_spatial_map(latent_ind_l,posterior_latent_map,behavior_tsdf,position_tsdf=None,speed_thresh=5,color_time=True,kwargs_scatter = dict(s=10,alpha=0.5)):
+def plot_multiple_latent_spatial_map(latent_ind_l,posterior_latent_map,behavior_tsdf,position_tsdf=None,speed_thresh=5,color_time=True,kwargs_scatter = dict(s=10,alpha=0.5),color=None):
     nplots = len(latent_ind_l)
     fig,axs=ph.subplots_wrapper(nplots,)
     if position_tsdf is None:
@@ -503,7 +505,8 @@ def plot_multiple_latent_spatial_map(latent_ind_l,posterior_latent_map,behavior_
                                         do_plot_maze=True,
                                         position_tsdf=position_tsdf,ds=5,
                                                 seperate_colorbar=False,
-                                                color_time=color_time
+                                                color_time=color_time,
+                                                color=color
                                     )
         ax=to_return[1]
         ax.set_title(f'latent {i}')
