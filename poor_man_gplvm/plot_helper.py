@@ -1086,7 +1086,7 @@ def plot_maze_background(spk_beh_df,ds=10,fig=None,ax=None,mode='line',**kwargs)
     ax.set_ylabel('y')
     return fig,ax
 
-def plot_data_shuffle_time_series(data, shuffle, align_at='middle', fig=None, ax=None, figsize=(6, 4), data_label='data', shuffle_label='shuffle', data_color='C0', shuffle_color='C0', shuffle_alpha=0.3, data_lw=2,marker='o',marker_size=2):
+def plot_data_shuffle_time_series(data, shuffle, align_at='middle', fig=None, ax=None, figsize=(6, 4), data_label='data', shuffle_label='null', data_color='C0', shuffle_color='C0', shuffle_alpha=0.3, data_lw=2,marker='o',marker_size=2):
     '''
     plot data and shuffle time series; data is a line and shuffle is a filled area for middle 95% quantile
     data: n_time
