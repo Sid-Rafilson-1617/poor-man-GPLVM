@@ -29,7 +29,7 @@ def save_fig(fig,fig_name,fig_dir='./figs',fig_format=['png','pdf'],dpi=300,do_c
     if not os.path.exists(fig_dir):
         os.makedirs(fig_dir)
     for fmt in fig_format:
-        fig.savefig(os.path.join(fig_dir,fig_name+f'.{fmt}'),dpi=dpi,bbox_inches=bbox_inches)
+        fig.savefig(os.path.join(fig_dir,fig_name+f'.{fmt}'),dpi=dpi,bbox_inches=bbox_inches,transparent=False)
         print(f'saved {fig_name}.{fmt} to {fig_dir}')
     if do_close:
         plt.close(fig)
