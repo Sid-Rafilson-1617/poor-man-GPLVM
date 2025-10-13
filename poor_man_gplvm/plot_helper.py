@@ -405,6 +405,74 @@ def add_vertical_shades(fig,intvl_l,ep=None,*,exclude=None,fillcolor="red",opaci
     return fig
 
 
+def add_vertical_shades_mpl(fig,intvl_l,ep=None,*,exclude=None,color="red",alpha=0.25,linewidth=0,linestyle=None,zorder=0,**span_kwargs):
+    '''
+    Shade intervals on a Matplotlib figure (all subplots by default).
+
+    fig: matplotlib.figure.Figure
+    intvl_l: nap.IntervalSet, the intervals to be shaded
+    ep: nap.IntervalSet, with one row, to restrict the intvl_l
+
+    exclude: iterable of (row, col) pairs (1-based) specifying subplot coordinates to NOT shade
+    color, alpha, linewidth, linestyle, zorder: Matplotlib styling controls (passed to axvspan)
+    Additional keyword arguments are passed through to ax.axvspan
+    '''
+
+    # restrict intervals to epoch if provided
+    if ep is None:
+        intvl_l_sub = intvl_l
+    else:
+        ma = (intvl_l['start'] >= ep['start'][0]) & (intvl_l['end'] <= ep['end'][0])
+        intvl_l_sub = intvl_l[ma]
+
+    # collect (x0, x1) pairs
+    intervals = []
+    for intv in intvl_l_sub:
+        x0 = float(intv['start'][0])
+        x1 = float(intv['end'][0])
+        intervals.append([x0, x1])
+
+    # normalize exclude list into a set of tuples
+    exclude_set = set()
+    if exclude is not None:
+        exclude_set = { (int(rc[0]), int(rc[1])) for rc in exclude }
+
+    # find axes to shade; respect subplot positions when available
+    axes_to_shade = []
+    for ax in fig.get_axes():
+        skip = False
+        spec = getattr(ax, 'get_subplotspec', None)
+        if callable(spec):
+            ss = ax.get_subplotspec()
+            if ss is not None:
+                # SubplotSpec spans [start, stop) in 0-based; convert to 1-based
+                rows = range(ss.rowspan.start + 1, ss.rowspan.stop + 1)
+                cols = range(ss.colspan.start + 1, ss.colspan.stop + 1)
+                for r in rows:
+                    for c in cols:
+                        if (r, c) in exclude_set:
+                            skip = True
+                            break
+                    if skip:
+                        break
+        # If no subplotspec, fall back to including unless globally excluded (not applicable)
+        if not skip:
+            axes_to_shade.append(ax)
+
+    if len(intervals) == 0 or len(axes_to_shade) == 0:
+        return fig
+
+    # draw spans on selected axes
+    for ax in axes_to_shade:
+        for x0, x1 in intervals:
+            if x0 == x1:
+                ax.axvline(x0, color=color, alpha=alpha, linewidth=max(1, linewidth or 1), linestyle=linestyle, zorder=zorder, **span_kwargs)
+            else:
+                ax.axvspan(x0, x1, color=color, alpha=alpha, linewidth=linewidth, linestyle=linestyle, zorder=zorder, **span_kwargs)
+
+    return fig
+
+
 import plotly.graph_objects as go
 
 def set_plotly_fonts(fig,
