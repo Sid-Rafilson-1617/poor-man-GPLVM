@@ -880,7 +880,7 @@ import matplotlib.gridspec as gridspec
 import pynapple as nap
 from matplotlib.colors import Normalize
 
-def plot_pynapple_data_mpl(data_dict,  height_per_plot=3,width_per_plot=6,height_ratios=None):
+def plot_pynapple_data_mpl(data_dict,  height_per_plot=3,width_per_plot=6,height_ratios=None,plot_title=False):
     """
     Plot a dictionary of pynapple objects using matplotlib.
     
@@ -987,7 +987,8 @@ def plot_pynapple_data_mpl(data_dict,  height_per_plot=3,width_per_plot=6,height
                     transform=ax.transAxes)
             
         # Set title and labels
-        ax.set_title(key)
+        if plot_title:
+            ax.set_title(key)
         
         # Hide x-labels and ticks for all but the bottom subplot
         if i < n_plots - 1:
