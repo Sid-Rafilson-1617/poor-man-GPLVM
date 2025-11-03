@@ -880,7 +880,7 @@ import matplotlib.gridspec as gridspec
 import pynapple as nap
 from matplotlib.colors import Normalize
 
-def plot_pynapple_data_mpl(data_dict,  height_per_plot=3,width_per_plot=6,height_ratios=None,plot_title=False):
+def plot_pynapple_data_mpl(data_dict,  height_per_plot=3,width_per_plot=6,height_ratios=None,plot_title=False,add_scatter_to_heatmap=False,heatmap_scatter_s=0.05,heatmap_scatter_c='yellow'):
     """
     Plot a dictionary of pynapple objects using matplotlib.
     
@@ -891,6 +891,10 @@ def plot_pynapple_data_mpl(data_dict,  height_per_plot=3,width_per_plot=6,height
         figsize (tuple): Figure size (width, height) in inches.
         height_ratios (list): Optional list of relative heights for each subplot.
                               If None, equal heights are used.
+        
+        if add_scatter_to_heatmap:
+            add scatter to heatmap on the max row within each column
+            can be a dict
         
     Returns:
         fig (matplotlib.figure.Figure): The generated figure.
@@ -976,6 +980,11 @@ def plot_pynapple_data_mpl(data_dict,  height_per_plot=3,width_per_plot=6,height
                             interpolation='none', 
                             extent=[np.min(t), np.max(t), 0, d_plot.shape[0]], 
                             norm=Normalize(vmin=zmin, vmax=zmax))
+                
+                # if add scatter to heatmap
+                if add_scatter_to_heatmap.get(key,False):
+                    map_ = d_plot.argmax(axis=0)
+                    ax.scatter(t,map_,s=heatmap_scatter_s,c=heatmap_scatter_c)
                 
             # Add colorbar
             # plt.colorbar(im, ax=ax)
