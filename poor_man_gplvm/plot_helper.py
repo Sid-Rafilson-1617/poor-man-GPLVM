@@ -9,6 +9,8 @@ import sys,os
 import pandas as pd
 
 import plotly.graph_objects as go
+import plotly.io as pio
+pio.renderers.default='notebook'
 from plotly.subplots import make_subplots
 from scipy.stats import wilcoxon
 import seaborn as sns
