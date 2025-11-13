@@ -1371,7 +1371,7 @@ def plot_brain_state_intervals(interval_dict,color_dict={'REM':'magenta','NREM':
                 label=state
             else:
                 label=None
-            ax.axvspan(intv['start'][0],intv['end'][0],y1=ymin,y2=ymax,color=color,alpha=0.3,label=label)
+            ax.fill_between([intv['start'][0],intv['end'][0]], ymin, ymax, color=color, alpha=0.3, label=label)
             
         ymin=ymin+gap
         ymax=ymax+gap
