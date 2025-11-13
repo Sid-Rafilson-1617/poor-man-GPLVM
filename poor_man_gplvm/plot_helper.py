@@ -1355,10 +1355,15 @@ def plot_brain_state_intervals(interval_dict,color_dict={'REM':'magenta','NREM':
         fig,ax=plt.subplots()
     ymin=0
     ymax=ymin+gap
+    yticks = []
+    yticklabels=[]
+    
     if order is None: # if order if provided then follow this order, which will determine the height of each interval
         order = list(interval_dict.keys())
 
     for state in order:
+        yticks.append((ymin+ymax)/2)
+        yticklabels.append(state)
         color = color_dict[state]
         interval = interval_dict[state]
         for ii,intv in enumerate(interval):
@@ -1370,4 +1375,7 @@ def plot_brain_state_intervals(interval_dict,color_dict={'REM':'magenta','NREM':
             
         ymin=ymin+gap
         ymax=ymax+gap
+        ax.set_yticks(yticks)
+        ax.set_yticklabels(yticklabels)
+        ax.set_ylim(ymin,ymax)
     return fig,ax
