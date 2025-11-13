@@ -4,9 +4,7 @@ A simplified implementation of Gaussian Process Latent Variable Models (GPLVM). 
 
 ## Installation
 
-### Recommended: Conda Installation
-
-The recommended way to install this package is through conda, which correctly handles the JAX, CUDA, and other dependencies:
+### GPU Installation
 
 ```bash
 # Create a new conda environment with all required dependencies
@@ -15,33 +13,21 @@ conda create -n pmgplvm -c conda-forge -c nvidia cuda-nvcc jaxlib=0.4.26=cuda120
 # Activate the environment
 conda activate pmgplvm
 
-# Install poor-man-gplvm
-pip install poor-man-gplvm  # (once published)
-```
-
-### For CPU-Only Installation
-
-If you don't have a compatible GPU:
-
-```bash
-conda create -n pmgplvm -c conda-forge python=3.12.5 jax=0.4.26 jaxlib=0.4.26 jaxopt=0.8.2 optax=0.2.2
-conda activate pmgplvm
-pip install poor-man-gplvm  # (once published)
-```
-
-### From Source
-
-To install the latest development version:
-
-```bash
-# First create and set up the conda environment as above
-# Then:
+# Install from source
 git clone https://github.com/samdeoxys1/poor-man-GPLVM.git
 cd poor-man-GPLVM
 pip install -e .
 ```
 
-For more detailed installation instructions and troubleshooting, see [INSTALL.md](INSTALL.md).
+### CPU-Only Installation
+
+```bash
+conda create -n pmgplvm -c conda-forge python=3.12.5 jax=0.4.26 jaxlib=0.4.26 jaxopt=0.8.2 optax=0.2.2
+conda activate pmgplvm
+git clone https://github.com/samdeoxys1/poor-man-GPLVM.git
+cd poor-man-GPLVM
+pip install -e .
+```
 
 ## Usage
 
@@ -52,6 +38,7 @@ import numpy as np
 import jax.numpy as jnp
 import jax.random as jr
 import poor_man_gplvm as pmg
+import matplotlib.pyplot as plt
 
 # initialize model
 n_neuron = 100
@@ -67,33 +54,36 @@ em_res=model.fit_em(y,key=jr.PRNGKey(3),
                       posterior_init=None,ma_neuron=None,ma_latent=None,n_time_per_chunk=10000
                    )
 
+# monitor training
+plt.plot(em_res['log_marginal_l'])
+
 # to decode (potentially) new data
 decode_res = model.decode_latent(y)
 
-# useful properties:
+### useful variables:
 
 # tuning curves
-model.tuning
+model.tuning # n_neuron x n_latent_bin
 
 # latent posterior
-decode_res['posterior_latent_marg']
+decode_res['posterior_latent_marg'] # n_time x n_latent_bin   
 # dynamics posterior
-decode_res['posterior_dynamics_marg']
+decode_res['posterior_dynamics_marg'] # n_time x 2 
+
+# jump probability
+decode_res['posterior_dynamics_marg'][:,1]
+# continuous probability = 1 - jump probability
+decode_res['posterior_dynamics_marg'][:,0]
+
 
 # after fitting one can also decode without temporal dynamics, using Naive Bayes
-
 decode_res_nb = model.decode_latent_naive_bayes(y)
 
 # NB latent posterior
 decode_res_nb['posterior_latent']
 
 
-```
 
-## Features
-
-
-## Development
 
 ### Setting up the development environment
 
@@ -102,26 +92,8 @@ decode_res_nb['posterior_latent']
 conda create -n pmgplvm -c conda-forge -c nvidia cuda-nvcc jaxlib=0.4.26=cuda120py312h4008524_201 jax=0.4.26 python=3.12.5 jaxopt=0.8.2 optax=0.2.2
 conda activate pmgplvm
 
-# Then install the package in development mode
+# Install the package in development mode
 git clone https://github.com/samdeoxys1/poor-man-GPLVM.git
 cd poor-man-GPLVM
 pip install -e ".[dev]"
-```
-
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Citation
-
-If you use this software in your research, please cite:
-
-```
-@software{poor_man_gplvm,
-  author = {Zheyang Sam Zheng},
-  title = {Poor Man's GPLVM: A simplified implementation of Gaussian Process Latent Variable Models},
-  year = {2024},
-  url = {https://github.com/samdeoxys1/poor-man-GPLVM}
-}
 ```
