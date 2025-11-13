@@ -81,9 +81,9 @@ decode_res_nb = model.decode_latent_naive_bayes(y)
 
 # NB latent posterior
 decode_res_nb['posterior_latent']
+```
 
-
-
+## Development
 
 ### Setting up the development environment
 
