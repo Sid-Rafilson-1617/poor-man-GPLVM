@@ -1375,7 +1375,7 @@ def plot_brain_state_intervals(interval_dict,color_dict={'REM':'magenta','NREM':
             
         ymin=ymin+gap
         ymax=ymax+gap
-        ax.set_yticks(yticks)
-        ax.set_yticklabels(yticklabels)
-        ax.set_ylim(ymin,ymax)
+    ax.set_yticks(yticks)
+    ax.set_yticklabels(yticklabels)
+    ax.set_ylim(0,ymax)
     return fig,ax
