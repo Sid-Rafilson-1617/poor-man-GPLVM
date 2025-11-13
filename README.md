@@ -1,6 +1,9 @@
 # Poor Man's GPLVM
 
-A simplified implementation of Gaussian Process Latent Variable Models (GPLVM) that also allows the inference of latent dynamics (continuous vs jump). 
+An efficient Jax-based implementation of Gaussian Process Latent Variable Models (GPLVM) that also allows the inference of latent dynamics (continuous vs jump). Latent variables are low dimensional structure that governs neural covariability. This model learns: 
+  1. smooth tuning curves of neurons with respect to the latent variables
+  2. posterior probability of the (discretized) latent variables and 
+  3. posterior probability of the dynamics of the latent evolution (i.e. smoothly varying or jumping)
 
 ## Installation
 
