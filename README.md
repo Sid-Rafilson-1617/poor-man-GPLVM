@@ -1,31 +1,46 @@
 # Poor Man's GPLVM
 
-A simplified implementation of Gaussian Process Latent Variable Models (GPLVM). This package provides an easy-to-use interface for dimensionality reduction and visualization using GPLVMs.
+A simplified implementation of Gaussian Process Latent Variable Models (GPLVM) that also allows the inference of latent dynamics (continuous vs jump). 
 
 ## Installation
 
 ### GPU Installation
 
 ```bash
-# Create a new conda environment with all required dependencies
-conda create -n pmgplvm -c conda-forge -c nvidia cuda-nvcc jaxlib=0.4.26=cuda120py312h4008524_201 jax=0.4.26 python=3.12.5 jaxopt=0.8.2 optax=0.2.2
+# Create a new conda environment with all dependencies
+conda create -n pmgplvm -c conda-forge -c nvidia cuda-nvcc jaxlib=0.4.26=cuda120py312h4008524_201 jax=0.4.26 python=3.12.5 jaxopt=0.8.2 optax=0.2.2 numpy scipy tqdm=4.66.5 xarray=2024.3.0 matplotlib=3.9.2 plotly=5.24.1 seaborn=0.13.1 scikit-learn=1.5.2 pynapple=0.9.2 nemos=0.2.3 statsmodels=0.14.3
 
 # Activate the environment
 conda activate pmgplvm
 
-# Install from source
+# Clone the repository
 git clone https://github.com/samdeoxys1/poor-man-GPLVM.git
 cd poor-man-GPLVM
+
+# Install (non-editable)
+pip install .
+
+# OR install in editable mode for development
 pip install -e .
 ```
 
 ### CPU-Only Installation
 
 ```bash
-conda create -n pmgplvm -c conda-forge python=3.12.5 jax=0.4.26 jaxlib=0.4.26 jaxopt=0.8.2 optax=0.2.2
+# Create a new conda environment with all dependencies
+conda create -n pmgplvm -c conda-forge python=3.12.5 jax=0.4.26 jaxlib=0.4.26 jaxopt=0.8.2 optax=0.2.2 numpy scipy tqdm=4.66.5 xarray=2024.3.0 matplotlib=3.9.2 plotly=5.24.1 seaborn=0.13.1 scikit-learn=1.5.2 pynapple=0.9.2 nemos=0.2.3 statsmodels=0.14.3
+
+# Activate the environment
 conda activate pmgplvm
+
+# Clone the repository
 git clone https://github.com/samdeoxys1/poor-man-GPLVM.git
 cd poor-man-GPLVM
+
+# Install (non-editable)
+pip install .
+
+# OR install in editable mode for development
 pip install -e .
 ```
 
@@ -81,19 +96,4 @@ decode_res_nb = model.decode_latent_naive_bayes(y)
 
 # NB latent posterior
 decode_res_nb['posterior_latent']
-```
-
-## Development
-
-### Setting up the development environment
-
-```bash
-# Create and activate the conda environment first
-conda create -n pmgplvm -c conda-forge -c nvidia cuda-nvcc jaxlib=0.4.26=cuda120py312h4008524_201 jax=0.4.26 python=3.12.5 jaxopt=0.8.2 optax=0.2.2
-conda activate pmgplvm
-
-# Install the package in development mode
-git clone https://github.com/samdeoxys1/poor-man-GPLVM.git
-cd poor-man-GPLVM
-pip install -e ".[dev]"
 ```
