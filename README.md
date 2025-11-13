@@ -91,12 +91,12 @@ import poor_man_gplvm as pmg
 import matplotlib.pyplot as plt
 
 # initialize model
-n_neuron = 100
+n_neuron = 30
 model=pmg.PoissonGPLVMJump1D(n_neuron,movement_variance=1,tuning_lengthscale=10.) # can modify the hyperparameters
 
 # simulate some data
 
-T = 10000
+T = 1000
 state_l, spk = model.sample(T)
 y = spk # data for fitting is n_time x n_neuron 
 em_res=model.fit_em(y,key=jr.PRNGKey(3),
