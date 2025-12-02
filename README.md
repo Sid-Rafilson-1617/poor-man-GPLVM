@@ -92,7 +92,13 @@ import matplotlib.pyplot as plt
 
 # initialize model
 n_neuron = 30
-model=pmg.PoissonGPLVMJump1D(n_neuron,movement_variance=1,tuning_lengthscale=10.) # can modify the hyperparameters
+model=pmg.PoissonGPLVMJump1D(n_neuron,n_latent_bin=100,movement_variance=1,tuning_lengthscale=10.) # can modify the hyperparameters
+
+#### additional hyperparameters and their default values
+# param_prior_std=1 (L2 penalty of the weights)
+# p_move_to_jump=0.01 (Transition probability from continuous to fragmented dynamics)
+# p_jump_to_move=0.01 (Transition probability from fragmented to continuous dynamics)
+# w_init_variance=1, w_init_mean (mean and variance of the Gaussian initialization of the basis weights)
 
 # simulate some data
 
