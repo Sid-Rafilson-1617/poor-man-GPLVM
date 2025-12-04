@@ -223,7 +223,7 @@ def plot_latent_list_vs_position(latent_l, map_latent,behavior_tsdf,pos_col=['x'
 
 
     # plot running and immobility with different marker shape
-    speed_category = pd.cut(behavior_tsdf['speed_gauss'],bins=[0,*speed_category_thresh,np.inf],labels=False)
+    speed_category = pd.cut(behavior_tsdf[speed_col],bins=[0,*speed_category_thresh,np.inf],labels=False)
     speed_category_unique = np.unique(speed_category)
     speed_category_unique = speed_category_unique[np.logical_not(np.isnan(speed_category_unique))].astype(int)
     
