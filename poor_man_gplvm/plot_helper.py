@@ -407,7 +407,7 @@ def add_vertical_shades(fig,intvl_l,ep=None,*,exclude=None,fillcolor="red",opaci
     return fig
 
 
-def add_vertical_shades_mpl(fig,intvl_l,ep=None,*,exclude=None,color="red",alpha=0.25,linewidth=0,linestyle=None,zorder=0,**span_kwargs):
+def add_vertical_shades_mpl(fig,intvl_l,ep=None,*,exclude=None,color="red",alpha=0.25,linewidth=0,linestyle=None,zorder=0,mode='span',**span_kwargs):
     '''
     Shade intervals on a Matplotlib figure (all subplots by default).
 
@@ -416,8 +416,9 @@ def add_vertical_shades_mpl(fig,intvl_l,ep=None,*,exclude=None,color="red",alpha
     ep: nap.IntervalSet, with one row, to restrict the intvl_l
 
     exclude: iterable of (row, col) pairs (1-based) specifying subplot coordinates to NOT shade
-    color, alpha, linewidth, linestyle, zorder: Matplotlib styling controls (passed to axvspan)
-    Additional keyword arguments are passed through to ax.axvspan
+    color, alpha, linewidth, linestyle, zorder: Matplotlib styling controls (passed to axvspan/axvline)
+    mode: 'span' (default) for colored rectangles, 'lines' for vertical lines at interval boundaries
+    Additional keyword arguments are passed through to ax.axvspan or ax.axvline
     '''
 
     # restrict intervals to epoch if provided
@@ -469,13 +470,21 @@ def add_vertical_shades_mpl(fig,intvl_l,ep=None,*,exclude=None,color="red",alpha
     if len(intervals) == 0 or len(axes_to_shade) == 0:
         return fig
 
-    # draw spans on selected axes
+    # draw spans or lines on selected axes
     for ax in axes_to_shade:
         for x0, x1 in intervals:
-            if x0 == x1:
-                ax.axvline(x0, color=color, alpha=alpha, linewidth=max(1, linewidth or 1), linestyle=linestyle, zorder=zorder, **span_kwargs)
-            else:
-                ax.axvspan(x0, x1, color=color, alpha=alpha, linewidth=linewidth, linestyle=linestyle, zorder=zorder, **span_kwargs)
+            if mode == 'lines':
+                # Draw vertical lines at interval boundaries
+                lw = linewidth if linewidth else 1
+                ls = linestyle if linestyle else ':'
+                ax.axvline(x0, color=color, alpha=alpha, linewidth=lw, linestyle=ls, zorder=zorder, **span_kwargs)
+                if x0 != x1:
+                    ax.axvline(x1, color=color, alpha=alpha, linewidth=lw, linestyle=ls, zorder=zorder, **span_kwargs)
+            else:  # mode == 'span'
+                if x0 == x1:
+                    ax.axvline(x0, color=color, alpha=alpha, linewidth=max(1, linewidth or 1), linestyle=linestyle, zorder=zorder, **span_kwargs)
+                else:
+                    ax.axvspan(x0, x1, color=color, alpha=alpha, linewidth=linewidth, linestyle=linestyle, zorder=zorder, **span_kwargs)
 
     return fig
 
