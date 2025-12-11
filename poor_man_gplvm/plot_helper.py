@@ -883,7 +883,7 @@ import matplotlib.gridspec as gridspec
 import pynapple as nap
 from matplotlib.colors import Normalize
 
-def plot_pynapple_data_mpl(data_dict,  height_per_plot=3,width_per_plot=6,height_ratios=None,plot_title=False,add_scatter_to_heatmap=False,heatmap_scatter_s=0.05,heatmap_scatter_c='yellow'):
+def plot_pynapple_data_mpl(data_dict,  height_per_plot=3,width_per_plot=6,height_ratios=None,plot_title=False,add_scatter_to_heatmap=False,heatmap_scatter_s=0.05,heatmap_scatter_c='yellow',fig=None,axs=None):
     """
     Plot a dictionary of pynapple objects using matplotlib.
     
@@ -934,18 +934,24 @@ def plot_pynapple_data_mpl(data_dict,  height_per_plot=3,width_per_plot=6,height
         height_ratios = [1] * n_plots
     
     # Create figure and subplots with gridspec for flexible heights
-    fig = plt.figure(figsize=(width_per_plot,height_per_plot*n_plots),constrained_layout=True)
-    gs = gridspec.GridSpec(n_plots, 1, height_ratios=height_ratios)
-    
-    axs = []
-    
-    for i, (key, arr) in enumerate(data_dict.items()):
-        if i==0:
-            ax = fig.add_subplot(gs[i])
-        else:
-            ax = fig.add_subplot(gs[i],sharex=axs[0])
+    if axs is None:
+        fig = plt.figure(figsize=(width_per_plot,height_per_plot*n_plots),constrained_layout=True)
+        gs = gridspec.GridSpec(n_plots, 1, height_ratios=height_ratios)
+        axs = []
+        need_to_create_ax=True
+    else:
+        need_to_create_ax=False
         
-        axs.append(ax)
+    for i, (key, arr) in enumerate(data_dict.items()):
+        if need_to_create_ax:
+            if i==0:
+                ax = fig.add_subplot(gs[i])
+            else:
+                ax = fig.add_subplot(gs[i],sharex=axs[0])
+            
+            axs.append(ax)
+        else:
+            ax=axs[i]
         
         if isinstance(arr,tuple): # then it's for raster plot
             tind,uind,c_l = arr
