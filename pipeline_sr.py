@@ -17,16 +17,16 @@ from core import *
 # ----------------------------- Config ---------------------------------
 
 # Data paths and session info
-DATA_DIR = r"z:\Homes\voerom01\HPC_transverse\HPC_transverse_M01\HPC_TR_M01_20250615"
-FIG_DIR = r"z:\Homes\voerom01\HPC_transverse\HPC_transverse_M01\HPC_TR_M01_20250615\gplvmFigures"
+DATA_DIR = "/gpfs/data/buzsakilab/sid/HPC_TR_M01_20250615/"
+FIG_DIR = "/gpfs/data/buzsakilab/sid/HPC_TR_M01_20250615/gplvmFigures"
 SESSION_NAME = "HPC_TR_M01_20250615"
 BASE_NAME = "HPC_TR_M01_20250615"
 PROBES = [0, 1]
 
 
 # Spike rate computation parameters
-WINDOW_SIZE = 1         # s
-STEP_SIZE   = 1       # s
+WINDOW_SIZE = .01         # s
+STEP_SIZE   = .01       # s
 USE_UNITS   = "good"       # {'all', 'good', 'mua'}
 
 
@@ -40,10 +40,10 @@ N_TIME_BINS        = 100    # coarse bins for presence ratio
 # defining the region dictionary. Keys are probe numbers, values are dictionaries which are further mapping shanks to regions
 #region_dict = {0: {0: 'CA1', 1: 'RSP', 2: 'CA3', 3: 'CA1', 4: 'RSP', 5: 'CA3', 6: 'CA1', 7: 'RSP'}, 1: {0: 'CA3', 1: 'CA1', 2: 'CA2', 3: 'A1', 4: 'S1'}, 2: {0: 'CA3', 1: 'Th', 2: 'V1', 3: 'Th', 4: 'CA1', 5: 'V1', 6: 'CA1', 7: 'V1'}} UDS
 region_dict = {
-    0: {0: 'CA1', 1: 'CA1', 2: 'CA1', 3: 'CA1'},
-    1: {0: 'CA1', 1: 'CA1', 2: 'CA1', 3: 'CA1'},
-    2: {0: 'CA1', 1: 'CA1', 2: 'CA1', 3: 'Th'}, 
-    3: {0: 'CA1', 1: 'CA1', 2: 'CA1', 3: 'CA1'}
+    0: {0: 'CA1', 1: 'CA1', 2: 'CA1', 3: 'CA1', 4: 'CA1', 5: 'CA1', 6: 'CA1', 7: 'CA1'},
+    1: {0: 'CA1', 1: 'CA1', 2: 'CA1', 3: 'CA1', 4: 'CA1', 5: 'CA1', 6: 'CA1', 7: 'CA1'},
+    2: {0: 'CA1', 1: 'CA1', 2: 'CA1', 3: 'CA1', 4: 'CA1', 5: 'CA1', 6: 'CA1', 7: 'CA1'}, 
+    3: {0: 'CA1', 1: 'CA1', 2: 'CA1', 3: 'CA1', 4: 'CA1', 5: 'CA1', 6: 'CA1', 7: 'CA1'}
 } #This is going to need to be replaced by manual unit labels....
 
 
@@ -150,7 +150,12 @@ for probe in PROBES:
     ca1_cluster_ids = CluIDs[CA1_cell_ind - 1]      # cluster IDs for CA1 units
     dg_cluster_ids = CluIDs[DG_cell_ind - 1]      # cluster IDs for DG units
 
+
+
+    ################################################################################################
     clusters_use = np.concatenate((ca1_cluster_ids, dg_cluster_ids)) # hacky way to add in CA1 and DG cells!!!!
+    #################################################################################################
+
 
     # ---------- Restrict spike_count_matrix + units to CA1 ----------
     units = np.asarray(units)                       # ensure ndarray
