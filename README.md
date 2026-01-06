@@ -1,3 +1,12 @@
+```bash
+
+srun --nodes=1 --ntasks=1 --cpus-per-task=5 --mem=16Gb --gres=gpu:a100:1 --time=01:00:00 --pty bash
+module load condaenvs/gpu/ser9475
+cd /gpfs/home/ser9475/Documents/poor-man-GPLVM
+python pipeline_sr.py
+```
+
+
 # Poor Man's GPLVM (JumpLVM)
 
 An efficient Jax-based implementation of Gaussian Process Latent Variable Models (GPLVM) that also allows the inference of latent dynamics (continuous vs jump). Latent variables are low dimensional structure that governs neural covariability. This model learns: 

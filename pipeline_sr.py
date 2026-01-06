@@ -1,3 +1,4 @@
+print("Loading libraries...", end='', flush=True)
 import numpy as np
 import jax.numpy as jnp
 import jax.random as jr
@@ -24,8 +25,8 @@ PROBES = [0, 1]
 
 
 # Spike rate computation parameters
-WINDOW_SIZE = 0.01         # s
-STEP_SIZE   = 0.01       # s
+WINDOW_SIZE = 1         # s
+STEP_SIZE   = 1       # s
 USE_UNITS   = "good"       # {'all', 'good', 'mua'}
 
 
@@ -103,7 +104,7 @@ for probe in PROBES:
     spike_count_matrices[probe] = (spike_count_matrix, time_bins, units)
 
 
-# Load the cell metrics
+    # Load the cell metrics
     cell_metrics_file = os.path.join(DATA_DIR, f'{BASE_NAME}_imec{probe}.cell_metrics.cellinfo.mat')
     print(f"Loading cell metrics from: {cell_metrics_file}")
     if use_mat73:
@@ -111,62 +112,66 @@ for probe in PROBES:
         cm = cell_metrics_data['cell_metrics']
         cell_type = np.array(cm['putativeCellType'])
         shank_ids = np.array(cm['shankID'])
-        CluIDs = np.array(cm['cluID'])
+        CluIDs    = np.array(cm['cluID'])
+        tags = cm['tags']
+        # tags is often a 1x1 array-like; unwrap if needed
+        if isinstance(tags, np.ndarray):
+            tags = tags.item()
+        CA1_cell_ind = np.asarray(tags['CA1'], dtype=int).ravel()
     else:
-        cm = loadmat(cell_metrics_file)['cell_metrics']
-        cell_type = cm['putativeCellType'][0, 0]
-        shank_ids = cm['shankID'][0, 0]
-        CluIDs = cm['cluID'][0, 0]
+        cell_metrics_data = loadmat(
+            cell_metrics_file,
+            squeeze_me=True,
+            struct_as_record=False,
+        )
+        cm = cell_metrics_data['cell_metrics']   # mat_struct
 
-    # Ensure 1D arrays
-    CluIDs = np.asarray(CluIDs).reshape(-1)
+        cell_type = np.asarray(cm.putativeCellType)
+        shank_ids = np.asarray(cm.shankID)
+        CluIDs    = np.asarray(cm.cluID)
+
+        tags = cm.tags                            # mat_struct
+        CA1_cell_ind = np.asarray(tags.CA1, dtype=int).ravel()
+        DG_cell_ind = np.asarray(tags.DG, dtype=int).ravel()
+
+    print(f'CA1_cell_ind: {CA1_cell_ind}')
+    print(f"Loaded cell metrics with {len(CluIDs)} entries.")
+
+    # ---------- Normalize shapes ----------
+    CluIDs    = np.asarray(CluIDs).reshape(-1)
     shank_ids = np.asarray(shank_ids).reshape(-1)
-
-    # flatten cell_type and turn into strings
     cell_type = np.array([
         ct[0] if isinstance(ct, (np.ndarray, list)) else ct
         for ct in np.asarray(cell_type).reshape(-1)
     ])
 
-    # ------------------ ALIGN USING INTERSECTION ------------------
-    units = np.asarray(units)  # ensure ndarray for indexing
-    print(f"cell_metrics has {len(CluIDs)} entries; spike-count units: {len(units)}")
+    # ---------- Get CA1 cluster IDs ----------
+    # CA1_cell_ind are MATLAB-style indices into cell_metrics arrays (1-based)
+    ca1_cluster_ids = CluIDs[CA1_cell_ind - 1]      # cluster IDs for CA1 units
+    dg_cluster_ids = CluIDs[DG_cell_ind - 1]      # cluster IDs for DG units
 
-    # map cluID -> index into cell_metrics arrays
+    clusters_use = np.concatenate((ca1_cluster_ids, dg_cluster_ids)) # hacky way to add in CA1 and DG cells!!!!
+
+    # ---------- Restrict spike_count_matrix + units to CA1 ----------
+    units = np.asarray(units)                       # ensure ndarray
+    ca1_mask = np.isin(units, clusters_use)
+    print(f"Probe {probe}: {ca1_mask.sum()} CA1 units out of {len(units)} filtered units.")
+
+    spike_count_matrix = spike_count_matrix[ca1_mask, :]
+    units = units[ca1_mask]
+
+    # ---------- Align cell_type and shank_ids to the kept units ----------
     id_to_idx = {int(cid): i for i, cid in enumerate(CluIDs)}
 
-    keep_rows = []
-    aligned_cell_type = []
-    aligned_shank_ids = []
-    aligned_units = []
+    aligned_cell_type = np.array([cell_type[id_to_idx[int(u)]] for u in units])
+    aligned_shank_ids = np.array([shank_ids[id_to_idx[int(u)]] for u in units])
 
-    for row, uid in enumerate(units):
-        idx = id_to_idx.get(int(uid), None)
-        if idx is None:
-            # this unit has no cell_metrics entry; drop it
-            print(f"Warning: Unit ID {uid} not found in cell_metrics; dropping from analysis.")
-            continue
-        aligned_units.append(uid)
-        aligned_cell_type.append(cell_type[idx])
-        aligned_shank_ids.append(shank_ids[idx])
-        keep_rows.append(row)
+    print(f"After CA1 alignment: {len(units)} units remain.")
 
-    keep_rows = np.asarray(keep_rows, dtype=int)
-
-    # apply to spike_count_matrix and units
-    spike_count_matrix = spike_count_matrix[keep_rows, :]
-    units = np.asarray(aligned_units)
-    cell_type = np.asarray(aligned_cell_type)
-    shank_ids = np.asarray(aligned_shank_ids)
-
-    print(f"After alignment: {len(units)} units remain with cell_metrics info.")
-
-    # store per-probe results
+    # ---------- Store per-probe results ----------
     spike_count_matrices[probe] = (spike_count_matrix, time_bins, units)
-    cell_types[probe] = cell_type
-    regions[probe] = np.array([region_dict[probe][sid - 1] for sid in shank_ids])  # shank IDs are 1-based
-    # --------------------------------------------------------------
-
+    cell_types[probe] = aligned_cell_type
+    regions[probe] = np.array([region_dict[probe][sid - 1] for sid in aligned_shank_ids])  # shank IDs are 1-based
 
     # ------------------------ Plotting spike raster for each hemisphere and the binarized positions------------------------
 REGIONS = ['CA1']
@@ -269,7 +274,7 @@ print(f'times shape: {times.shape}')
 # define the models for the left and right hemispheres
 N_SPATIAL_BINS = 100
 model=pmg.PoissonGPLVMJump1D(sorted_spike_counts_concat_L.shape[0], n_latent_bin=N_SPATIAL_BINS + 1, movement_variance=1, tuning_lengthscale=1)
-em_res_l = model.fit_em(sorted_spike_counts_concat_L.T, key=jr.PRNGKey(3), n_iter=30, log_posterior_init=None, ma_neuron=None, ma_latent=None, n_time_per_chunk=10000)
+em_res_l = model.fit_em(sorted_spike_counts_concat_L.T, key=jr.PRNGKey(3), n_iter=2, log_posterior_init=None, ma_neuron=None, ma_latent=None, n_time_per_chunk=10000)
 
 #tuning_curves_r = model_r.tuning
 tuning_curves_l = model.tuning
@@ -284,6 +289,7 @@ for neuron in range(10):
     sns.despine()
     plt.tight_layout()
     plt.savefig(os.path.join(FIG_DIR, f'tuning_curve_unit_{neuron}.png'))
+    plt.close()
 
 
 decode_res = model.decode_latent(sorted_spike_counts_concat_L.T)
@@ -303,6 +309,7 @@ print(time_array)
 
 
 # save the posterior results
+os.makedirs(os.path.join(DATA_DIR, 'gplvm'), exist_ok=True)
 np.savez_compressed(
     os.path.join(DATA_DIR, 'gplvm', f'{SESSION_NAME}_gplvm_posteriors_100bins.npz'),
     latent_posteriors=latent_posteriors_l,
@@ -311,6 +318,12 @@ np.savez_compressed(
     time_array=time_array
 
 )
+# save the marginals    
+np.savez_compressed(
+    os.path.join(DATA_DIR, 'gplvm', f'{SESSION_NAME}_gplvm_log_marginals_100bins.npz'),
+    log_marginal_l=em_res_l['log_marginal_l'],
+)
+
 
 
 fn = os.path.join(DATA_DIR, 'gplvm', f'{SESSION_NAME}_gplvm_posteriors_100bins.npz')
@@ -326,3 +339,9 @@ savemat(os.path.join(DATA_DIR, 'gplvm', f'{SESSION_NAME}_gplvm_posteriors_100bin
     'time_seconds': data['time_array']
 })
 
+# convert the log marginals to .mat
+fn_log = os.path.join(DATA_DIR, 'gplvm', f'{SESSION_NAME}_gplvm_log_marginals_100bins.npz')
+data_log = np.load(fn_log)
+savemat(os.path.join(DATA_DIR, 'gplvm', f'{SESSION_NAME}_gplvm_marginals_100bins.mat'), {
+    'log_marginal_l': data_log['log_marginal_l']
+})
