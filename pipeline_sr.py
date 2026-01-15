@@ -17,11 +17,11 @@ from core import *
 # ----------------------------- Config ---------------------------------
 
 # Data paths and session info
-DATA_DIR = "/gpfs/data/buzsakilab/sid/HPC_TR_M01_20250615/"
-FIG_DIR = "/gpfs/data/buzsakilab/sid/HPC_TR_M01_20250615/gplvmFigures"
-SESSION_NAME = "HPC_TR_M01_20250615"
-BASE_NAME = "HPC_TR_M01_20250615"
-PROBES = [0, 1]
+DATA_DIR = r"Z:\Homes\voerom01\Bilat_HPC\Bilat_R02\Bilat_R02_20251106"
+FIG_DIR = os.path.join(DATA_DIR, "figures")
+SESSION_NAME = os.path.basename(DATA_DIR)
+BASE_NAME = SESSION_NAME
+PROBES = [3]
 
 
 # Spike rate computation parameters
