@@ -531,6 +531,7 @@ def preprocess_moser_data(
         # No units in requested locations
         return (
             np.zeros((0, 0), dtype=float),
+            np.zeros((0,), dtype=float),
             time_bins,
             np.array([], dtype=str),
             np.zeros_like(time_bins),
@@ -899,6 +900,519 @@ def load_behavior(behavior_file: str, tracking_file: str = None) -> pd.DataFrame
     events = events[['position_x', 'position_y', 'velocity_x', 'velocity_y', 'reward_state', 'speed', 'timestamp_ms']]
     return events
 
+
+
+
+def mat_struct_to_dict(s):
+    # for scipy with struct_as_record=False, squeeze_me=True
+    return {name: getattr(s, name) for name in getattr(s, "_fieldnames", [])}
+
+def compute_spike_counts(
+    spike_times: list[np.ndarray],
+    spike_clusters: np.ndarray,
+    window_size: float = 1.0,
+    sigma: float = 0,
+    zscore: bool = False,
+):
+    """
+    Compute spike counts using a sliding window approach from Cell Metrics data.
+    
+    This function processes spike times and cluster assignments from Kilosort/Phy2 which have been loaded from Cell Metrics, and computes spike counts within overlapping sliding windows.
+    Optionally, Gaussian smoothing and z-scoring can be applied across time for each unit.
+
+    Parameters
+    ----------
+    spike_times : list[np.ndarray]
+        List of arrays of spike times for each unit.
+    spike_clusters : np.ndarray
+        Array of cluster IDs corresponding to each spike time.
+    window_size : float, optional
+        Size of the sliding window in seconds, default is 1.0.
+    use_units : str, optional
+        Filter for unit types to include:
+        - 'all': Include all units
+        - 'good': Include only good units
+        - 'mua': Include only multi-unit activity
+        - 'good/mua': Include both good units and multi-unit activity
+        - 'noise': Include only noise units
+        Default is 'all'.
+    sigma : float, optional
+        Standard deviation (in window steps) for Gaussian smoothing kernel. If 0 or None,
+        no smoothing is applied. Default is 2.5.
+    zscore : bool, optional
+        Whether to z-score the spike counts over time for each unit, default is True.
+    adj : str or None, optional
+        Suffix for spike_times file (e.g., '_sec_adj'), consistent with your existing code.
+
+    Returns
+    -------
+    spike_count_matrix : ndarray
+        Matrix of spike counts (shape: num_units × num_windows).
+    time_bins : ndarray
+        Array of starting times for each window (seconds).
+    units : ndarray
+        Array of unit (cluster) IDs corresponding to rows of `spike_count_matrix`.
+
+    Notes
+    -----
+    - Counts are raw spike counts per window before optional smoothing/z-scoring.
+      To get rates later, you can divide by `window_size`.
+    """
+    step_size = window_size  # non-overlapping windows; adjust if you want overlap
+
+
+    # Return early if no spikes
+    if spike_times.size == 0:
+        return (
+            np.zeros((0, 0), dtype=np.float64),
+            np.zeros((0,), dtype=np.float64),
+            np.array([], dtype=int),
+        )
+
+    # Total duration of recording
+    recording_duration = float(spike_times.max())
+    if recording_duration < window_size:
+        # No full window fits; return empty with units list
+        units = np.unique(spike_clusters)
+        return (
+            np.zeros((len(units), 0), dtype=np.float64),
+            np.zeros((0,), dtype=np.float64),
+            units,
+        )
+
+    # Number of windows and their start times
+    num_windows = 1 + int(np.floor((recording_duration - window_size) / step_size))
+    time_bins = np.arange(num_windows, dtype=np.float64) * step_size  # window starts
+
+    # Assign each spike to a window start index
+    start_idx = np.floor(spike_times / step_size).astype(np.int64)
+    valid = (start_idx >= 0) & (start_idx < num_windows)
+    start_idx = start_idx[valid]
+    spike_times_v = spike_times[valid]
+    spike_clusters_v = spike_clusters[valid]
+
+    # Guard against spikes that land in a start bin whose window would end before the spike
+    win_end = (start_idx * step_size) + window_size
+    valid2 = spike_times_v < win_end
+    start_idx = start_idx[valid2]
+    spike_clusters_v = spike_clusters_v[valid2]
+
+    # Map units to row indices
+    units = np.unique(spike_clusters_v)  # actual units present post-filter
+    unit_to_row = {u: i for i, u in enumerate(units)}
+    rows = np.fromiter(
+        (unit_to_row[u] for u in spike_clusters_v),
+        dtype=np.int64,
+        count=spike_clusters_v.size,
+    )
+
+    # Accumulate counts: (unit, window) -> spike count
+    spike_count_matrix = np.zeros((units.size, num_windows), dtype=np.float64)
+    np.add.at(spike_count_matrix, (rows, start_idx), 1.0)
+
+    # Optional smoothing (on counts)
+    if sigma and sigma > 0:
+        from scipy.ndimage import gaussian_filter1d
+        for r in range(spike_count_matrix.shape[0]):
+            spike_count_matrix[r, :] = gaussian_filter1d(
+                spike_count_matrix[r, :],
+                sigma=sigma,
+                mode='nearest',
+            )
+
+    # Optional z-score per unit
+    if zscore:
+        mean = spike_count_matrix.mean(axis=1, keepdims=True)
+        std = spike_count_matrix.std(axis=1, keepdims=True)
+        std[std == 0] = 1.0
+        spike_count_matrix = (spike_count_matrix - mean) / std
+
+    return spike_count_matrix, time_bins, units
+
+
+def get_presence_ratio(
+    est_counts_per_bin: np.ndarray,
+    time_bins: np.ndarray,
+    n_coarse_bins: int
+) -> np.ndarray:
+    """
+    Compute presence ratio per unit using coarse time bins.
+    A unit is 'present' in a coarse bin if its estimated spike count sum in that bin > 0.
+    Vectorized via a (n_time x n_coarse_bins) binning matrix.
+    """
+    if time_bins.ndim != 1:
+        raise ValueError("time_bins must be 1D (monotonic increasing).")
+    if est_counts_per_bin.shape[1] != time_bins.size:
+        raise ValueError("est_counts_per_bin columns must match len(time_bins).")
+
+    t0 = time_bins[0]
+    t1 = time_bins[-1] + (time_bins[1]-time_bins[0] if len(time_bins)>1 else 1.0)
+    edges = np.linspace(t0, t1, n_coarse_bins + 1)
+    # Map each fine time bin into a coarse bin index [0, n_coarse_bins-1]
+    bin_idx = np.digitize(time_bins, edges, right=False) - 1
+    bin_idx = np.clip(bin_idx, 0, n_coarse_bins - 1)
+
+    # Build a (n_time, n_coarse_bins) one-hot binning matrix (uint8 to save memory)
+    n_time = time_bins.size
+    B = np.zeros((n_time, n_coarse_bins), dtype=np.uint8)
+    B[np.arange(n_time), bin_idx] = 1
+
+    # Sum counts within each coarse bin for every unit: (n_units x n_time) @ (n_time x n_bins)
+    coarse_sums = est_counts_per_bin @ B  # shape: (n_units, n_coarse_bins)
+
+    # Presence if sum>0 in a coarse bin; ratio across bins
+    presence = (coarse_sums > 0).mean(axis=1)
+    return presence
+
+
+def load_cell_metrics(cell_metrics_file, **kwargs):
+    """
+    Load and parse a CellExplorer `cell_metrics.cellinfo.mat` file.
+
+    Parameters
+    ----------
+    cell_metrics_file : str
+        Full path to the `.cell_metrics.cellinfo.mat` file
+    
+    **kwargs : dict, optional
+        Additional options for loading and filtering:
+        - verbose (bool): If True, print a summary of the loaded data.
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+            - cellIDs : array-like
+                CellExplorer cell IDs (1-indexed).
+            - cluIDs : array-like
+                Kilosort/Phy cluster IDs (0-indexed).
+            - tags : dict
+                Mapping of brain region name -> list of cellIDs in region.
+            - spikeCount : array-like
+                Total spike count per cell (indexed by cellID order).
+            - putativeCellType : array-like
+                Putative cell type labels per cell.
+            - spikes : list of arrays
+                Spike time arrays per cell.
+            - shankID : array-like
+                Shank ID per cell.
+            - refractoryPeriodViolations : array-like
+                Percentage of refractory period violations per cell.
+            - SleepState : dict or None
+                If present, a dictionary with keys for the sleep states and values of Nx2 double arrays of [start_time, end_time] for each detected episode of that state.
+
+    Notes
+    -----
+    - `cellIDs` are 1-indexed (CellExplorer convention).
+    - `cluIDs` are 0-indexed (Kilosort convention).
+    - Returned arrays preserve ordering from the .mat file.
+    """
+
+    # unpacking kwargs
+    verbose = kwargs.get("verbose", False)
+
+
+    if not os.path.exists(cell_metrics_file):
+        raise FileNotFoundError(f"Cell metrics file not found: {cell_metrics_file}")
+
+    # Load .mat file
+    raw = loadmat(cell_metrics_file, struct_as_record=False, squeeze_me=True)
+
+    if "cell_metrics" not in raw:
+        raise KeyError("`cell_metrics` structure not found in .mat file.")
+
+    cell_metrics = mat_struct_to_dict(raw["cell_metrics"])
+
+    # Extract fields (safely)
+    cellIDs = cell_metrics.get("cellID")
+    cluIDs = cell_metrics.get("cluID")
+    spikeCount = cell_metrics.get("spikeCount")
+    putativeCellType = cell_metrics.get("putativeCellType")
+    shankID = cell_metrics.get("shankID")
+    refractoryPeriodViolations = cell_metrics.get("refractoryPeriodViolation")
+    general = cell_metrics.get("general")
+    states = mat_struct_to_dict(general).get("states") if general is not None else None
+    SleepState = mat_struct_to_dict(mat_struct_to_dict(states).get("SleepState")) if states is not None else None
+
+
+    tags_raw = cell_metrics.get("tags")
+    tags = mat_struct_to_dict(tags_raw) if tags_raw is not None else {}
+
+    # extract spike times if available
+    spikes_raw = cell_metrics.get("spikes")
+    spikes = None
+    if spikes_raw is not None:
+        spikes_dict = mat_struct_to_dict(spikes_raw)
+        spikes = spikes_dict.get("times")
+
+
+
+
+    # ----------------------------
+    # Verbose summary (clean + structured)
+    # ----------------------------
+    if verbose:
+        n_cells = len(cellIDs) if cellIDs is not None else 0
+
+        print("\n" + "=" * 60)
+        print("Cell Metrics Summary")
+        print("=" * 60)
+        print(f"File: {cell_metrics_file}")
+        print(f"Total cells: {n_cells}")
+
+        # Brain regions
+        if tags:
+            print("\nBrain regions (tags):")
+            for region, ids in tags.items():
+                try:
+                    count = len(ids)
+                except TypeError:
+                    count = 1
+                print(f"  - {region:<15} : {count:>4} cells")
+        else:
+            print("\nBrain regions: None")
+
+        # Sleep States
+        if SleepState is not None:
+            print("\nSleep states:")
+            detected_states = SleepState.keys()
+            for state in detected_states:
+                print(f'    - {state}: {SleepState[state].shape}')
+        else:
+            print("\nSleep states: None")
+
+        # Cell types
+        if putativeCellType is not None:
+            unique_types, counts = np.unique(putativeCellType, return_counts=True)
+            print("\nPutative cell types:")
+            for t, c in zip(unique_types, counts):
+                print(f"  - {str(t):<20} : {c:>4} cells")
+        else:
+            print("\nPutative cell types: None")
+
+        # Shank distribution
+        if shankID is not None:
+            unique_shanks, counts = np.unique(shankID, return_counts=True)
+            print("\nShank distribution:")
+            for s, c in zip(unique_shanks, counts):
+                print(f"  - Shank {s:<5} : {c:>4} cells")
+
+        print("=" * 60 + "\n")
+
+    return {
+        "cellIDs": cellIDs,
+        "cluIDs": cluIDs,
+        "tags": tags,
+        "spikeCount": spikeCount,
+        "refractoryPeriodViolations": refractoryPeriodViolations,
+        "putativeCellType": putativeCellType,
+        "spikes": spikes,
+        "shankID": shankID,
+        "SleepState": SleepState,
+    }
+
+
+def _intervals_from_boundaries(time_bins, boundaries, end_inclusive=True):
+    """
+    boundaries: list of (start_idx, end_idx)
+    Returns list of dicts with start/end times and original indices.
+    """
+    tb = np.asarray(time_bins)
+    out = []
+    for k, (s, e) in enumerate(boundaries):
+        if not end_inclusive:
+            e = e - 1
+        if e < s:
+            continue
+        out.append({
+            "orig_k": k,
+            "s_idx": s,
+            "e_idx": e,
+            "s_t": float(tb[s]),
+            "e_t": float(tb[e]),
+        })
+    # Ensure sorted by start time
+    out.sort(key=lambda d: d["s_t"])
+    return out
+
+def _to_indices(time_bins, s_t, e_t, end_inclusive=True):
+    """
+    Convert times back to indices on this probe's time_bins.
+    We produce boundaries consistent with end_inclusive convention.
+    """
+    tb = np.asarray(time_bins)
+    s_idx = int(np.searchsorted(tb, s_t, side="left"))
+    # "right" gives first index > e_t, so inclusive end is -1
+    e_idx_inclusive = int(np.searchsorted(tb, e_t, side="right") - 1)
+
+    s_idx = max(0, min(s_idx, len(tb) - 1))
+    e_idx_inclusive = max(0, min(e_idx_inclusive, len(tb) - 1))
+    if e_idx_inclusive < s_idx:
+        e_idx_inclusive = s_idx
+
+    if end_inclusive:
+        return s_idx, e_idx_inclusive
+    else:
+        # exclusive end is inclusive+1 (capped at len(tb))
+        e_idx_exclusive = min(e_idx_inclusive + 1, len(tb))
+        return s_idx, e_idx_exclusive
+
+def merge_overlapping_bursts_two_probes(data_dict, probeA, probeB, end_inclusive=True, strict_overlap=True):
+    """
+    Forms connected overlap groups across probeA and probeB, merges bursts within each group per probe.
+    Returns:
+      mergedA_boundaries, mergedB_boundaries, groups
+    where groups is list of dicts with merged times and membership.
+    """
+    A = _intervals_from_boundaries(data_dict[probeA]["time_bins"],
+                                   data_dict[probeA].get("burst_boundaries", []),
+                                   end_inclusive=end_inclusive)
+    B = _intervals_from_boundaries(data_dict[probeB]["time_bins"],
+                                   data_dict[probeB].get("burst_boundaries", []),
+                                   end_inclusive=end_inclusive)
+
+    # Two-pointer sweep to build groups of connected overlaps.
+    i = j = 0
+    groups = []
+
+    # helper overlap predicate
+    def overlaps(a_s, a_e, b_s, b_e):
+        if strict_overlap:
+            return (a_s < b_e) and (b_s < a_e)  # positive-length overlap in time
+        else:
+            return (a_s <= b_e) and (b_s <= a_e)  # touch counts as overlap
+
+    # We’ll build groups as time-connected components in the combined interval graph.
+    # Start from earliest next interval, then expand group window while intervals overlap that window.
+    combined = [(d["s_t"], d["e_t"], "A", d) for d in A] + [(d["s_t"], d["e_t"], "B", d) for d in B]
+    combined.sort(key=lambda x: x[0])
+
+    k = 0
+    while k < len(combined):
+        # start a new group window
+        g_start = combined[k][0]
+        g_end   = combined[k][1]
+        membersA = []
+        membersB = []
+
+        # grow group while next interval overlaps current group window
+        kk = k
+        while kk < len(combined):
+            s_t, e_t, side, d = combined[kk]
+            # decide overlap with current window
+            if strict_overlap:
+                if s_t >= g_end:  # no overlap; because strict
+                    break
+            else:
+                if s_t > g_end:
+                    break
+
+            # include interval
+            if side == "A":
+                membersA.append(d)
+            else:
+                membersB.append(d)
+
+            # expand window end if needed
+            if e_t > g_end:
+                g_end = e_t
+            kk += 1
+
+        # Within this time-window group, we may have included intervals that touch the window
+        # but don't actually overlap across probes (e.g., A-only cluster). That's okay—those become "local".
+        groups.append({
+            "g_start": g_start,
+            "g_end": g_end,
+            "A_members": membersA,
+            "B_members": membersB,
+        })
+        k = kk
+
+    # Merge within each group per probe
+    mergedA = []
+    mergedB = []
+    merged_groups = []
+
+    for g in groups:
+        A_mem = g["A_members"]
+        B_mem = g["B_members"]
+
+        A_merged = None
+        B_merged = None
+
+        if A_mem:
+            A_merged = (min(d["s_t"] for d in A_mem), max(d["e_t"] for d in A_mem))
+            mergedA.append(A_merged)
+        if B_mem:
+            B_merged = (min(d["s_t"] for d in B_mem), max(d["e_t"] for d in B_mem))
+            mergedB.append(B_merged)
+
+        merged_groups.append({
+            "A_time": A_merged,
+            "B_time": B_merged,
+            "A_orig_indices": [d["orig_k"] for d in A_mem],
+            "B_orig_indices": [d["orig_k"] for d in B_mem],
+        })
+
+    # Convert merged times back to boundaries (indices) on each probe's own time_bins
+    mergedA_boundaries = []
+    for s_t, e_t in mergedA:
+        mergedA_boundaries.append(_to_indices(data_dict[probeA]["time_bins"], s_t, e_t, end_inclusive=end_inclusive))
+
+    mergedB_boundaries = []
+    for s_t, e_t in mergedB:
+        mergedB_boundaries.append(_to_indices(data_dict[probeB]["time_bins"], s_t, e_t, end_inclusive=end_inclusive))
+
+    return mergedA_boundaries, mergedB_boundaries, merged_groups
+
+
+def detect_population_bursts(zsmoothed_mua, **kwargs):
+
+    # unpacking kwargs
+    BURST_THRESHOLD = kwargs.get("BURST_THRESHOLD", 3)
+    BURST_BOUNDARY_THRESHOLD = kwargs.get("BURST_BOUNDARY_THRESHOLD", 0)
+    MIN_BURST_DURATION = kwargs.get("MIN_BURST_DURATION", 0.05)
+    MIN_INTERBURST_INTERVAL = kwargs.get("MIN_INTERBURST_INTERVAL", 0.25)
+    STEP_SIZE = kwargs.get("STEP_SIZE", 0.01)
+
+
+    burst_mask = zsmoothed_mua > BURST_THRESHOLD
+    burst_mask = np.concatenate(([False], burst_mask, [False]))
+
+    burst_starts = np.where(np.diff(burst_mask.astype(int)) == 1)[0]
+    burst_ends   = np.where(np.diff(burst_mask.astype(int)) == -1)[0]  # inclusive end
+
+    # merge bursts separated by short gaps
+    if len(burst_starts) >= 2:
+        gap_bins = burst_starts[1:] - burst_ends[:-1] - 1
+        merge_mask = (gap_bins * STEP_SIZE) < MIN_INTERBURST_INTERVAL
+
+        burst_starts = np.delete(burst_starts, np.where(merge_mask)[0] + 1)
+        burst_ends   = np.delete(burst_ends,   np.where(merge_mask)[0])
+
+    # expand boundaries using boundary threshold
+    burst_boundaries = []
+    n = len(zsmoothed_mua)
+
+    for start, end in zip(burst_starts, burst_ends):
+        while start > 0 and zsmoothed_mua[start - 1] > BURST_BOUNDARY_THRESHOLD:
+            start -= 1
+        while end < n - 1 and zsmoothed_mua[end + 1] > BURST_BOUNDARY_THRESHOLD:
+            end += 1
+        burst_boundaries.append((start, end))
+
+    burst_starts = np.array([b[0] for b in burst_boundaries])
+    burst_ends = np.array([b[1] for b in burst_boundaries])
+
+    # duration filter (inclusive ends)
+    burst_durations = (burst_ends - burst_starts + 1) * STEP_SIZE
+    valid = burst_durations >= MIN_BURST_DURATION
+    burst_starts = burst_starts[valid]
+    burst_ends   = burst_ends[valid]
+
+    burst_boundaries = [(s, e) for s, e in zip(burst_starts, burst_ends)]
+    return burst_boundaries
+    
 # ---- Helper to collect units for a given (region_name, cell_type_key) across probes ----
 def collect_matrix_for(spike_rate_matrices, region_name, regions, cell_type_key, cell_types, probes, cell_type_groups):
 
