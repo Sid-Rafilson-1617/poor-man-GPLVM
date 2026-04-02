@@ -911,6 +911,7 @@ def compute_spike_counts(
     spike_times: list[np.ndarray],
     spike_clusters: np.ndarray,
     window_size: float = 1.0,
+    step_size: float = 1.0,
     sigma: float = 0,
     zscore: bool = False,
 ):
@@ -928,6 +929,8 @@ def compute_spike_counts(
         Array of cluster IDs corresponding to each spike time.
     window_size : float, optional
         Size of the sliding window in seconds, default is 1.0.
+    step_size : float, optional
+        Step size between successive windows in seconds, default is 1.0 (non-overlapping
     use_units : str, optional
         Filter for unit types to include:
         - 'all': Include all units
@@ -958,7 +961,6 @@ def compute_spike_counts(
     - Counts are raw spike counts per window before optional smoothing/z-scoring.
       To get rates later, you can divide by `window_size`.
     """
-    step_size = window_size  # non-overlapping windows; adjust if you want overlap
 
 
     # Return early if no spikes
