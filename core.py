@@ -325,8 +325,13 @@ def compute_spike_counts(
             np.array([], dtype=int),
         )
 
+    # Keep the native session time reference (often absolute recording seconds).
+    # This prevents downstream misalignment when behavior timestamps are also in
+    # absolute time coordinates.
+    t_start = float(spike_times.min())
+
     # Total duration of recording
-    recording_duration = float(spike_times.max())
+    recording_duration = float(spike_times.max() - t_start)
     if recording_duration < window_size:
         # No full window fits; return empty with units list
         units = np.unique(spike_clusters)
@@ -338,10 +343,10 @@ def compute_spike_counts(
 
     # Number of windows and their start times
     num_windows = 1 + int(np.floor((recording_duration - window_size) / step_size))
-    time_bins = np.arange(num_windows, dtype=np.float64) * step_size  # window starts
+    time_bins = (np.arange(num_windows, dtype=np.float64) * step_size) + t_start  # window starts
 
     # Assign each spike to a window start index
-    start_idx = np.floor(spike_times / step_size).astype(np.int64)
+    start_idx = np.floor((spike_times - t_start) / step_size).astype(np.int64)
     valid = (start_idx >= 0) & (start_idx < num_windows)
     start_idx = start_idx[valid]
     spike_times_v = spike_times[valid]
@@ -971,8 +976,12 @@ def compute_spike_counts(
             np.array([], dtype=int),
         )
 
+    # Preserve the original session time reference so returned time bins can be
+    # aligned directly to external behavioral timestamps.
+    t_start = float(spike_times.min())
+
     # Total duration of recording
-    recording_duration = float(spike_times.max())
+    recording_duration = float(spike_times.max() - t_start)
     if recording_duration < window_size:
         # No full window fits; return empty with units list
         units = np.unique(spike_clusters)
@@ -984,10 +993,10 @@ def compute_spike_counts(
 
     # Number of windows and their start times
     num_windows = 1 + int(np.floor((recording_duration - window_size) / step_size))
-    time_bins = np.arange(num_windows, dtype=np.float64) * step_size  # window starts
+    time_bins = (np.arange(num_windows, dtype=np.float64) * step_size) + t_start  # window starts
 
     # Assign each spike to a window start index
-    start_idx = np.floor(spike_times / step_size).astype(np.int64)
+    start_idx = np.floor((spike_times - t_start) / step_size).astype(np.int64)
     valid = (start_idx >= 0) & (start_idx < num_windows)
     start_idx = start_idx[valid]
     spike_times_v = spike_times[valid]
