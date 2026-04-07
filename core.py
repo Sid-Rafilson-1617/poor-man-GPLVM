@@ -212,7 +212,7 @@ def compute_spike_rates(kilosort_dir: str, window_size: float = 1.0, step_size: 
 
 
 
-def compute_spike_counts(
+def compute_spike_counts_old(
     kilosort_dir: str,
     window_size: float = 1.0,
     step_size: float = 0.5,
@@ -328,10 +328,10 @@ def compute_spike_counts(
     # Keep the native session time reference (often absolute recording seconds).
     # This prevents downstream misalignment when behavior timestamps are also in
     # absolute time coordinates.
-    t_start = float(spike_times.min())
+    #t_start = float(spike_times.min())
 
     # Total duration of recording
-    recording_duration = float(spike_times.max() - t_start)
+    recording_duration = float(spike_times.max())
     if recording_duration < window_size:
         # No full window fits; return empty with units list
         units = np.unique(spike_clusters)
@@ -343,10 +343,10 @@ def compute_spike_counts(
 
     # Number of windows and their start times
     num_windows = 1 + int(np.floor((recording_duration - window_size) / step_size))
-    time_bins = (np.arange(num_windows, dtype=np.float64) * step_size) + t_start  # window starts
+    time_bins = (np.arange(num_windows, dtype=np.float64) * step_size)  # window starts
 
     # Assign each spike to a window start index
-    start_idx = np.floor((spike_times - t_start) / step_size).astype(np.int64)
+    start_idx = np.floor((spike_times) / step_size).astype(np.int64)
     valid = (start_idx >= 0) & (start_idx < num_windows)
     start_idx = start_idx[valid]
     spike_times_v = spike_times[valid]
@@ -912,6 +912,8 @@ def mat_struct_to_dict(s):
     # for scipy with struct_as_record=False, squeeze_me=True
     return {name: getattr(s, name) for name in getattr(s, "_fieldnames", [])}
 
+
+
 def compute_spike_counts(
     spike_times: list[np.ndarray],
     spike_clusters: np.ndarray,
@@ -967,6 +969,8 @@ def compute_spike_counts(
       To get rates later, you can divide by `window_size`.
     """
 
+    spike_times = np.asarray(spike_times, dtype=np.float64)
+    spike_clusters = np.asarray(spike_clusters)
 
     # Return early if no spikes
     if spike_times.size == 0:
@@ -975,15 +979,19 @@ def compute_spike_counts(
             np.zeros((0,), dtype=np.float64),
             np.array([], dtype=int),
         )
+    
 
-    # Preserve the original session time reference so returned time bins can be
-    # aligned directly to external behavioral timestamps.
+    if spike_times.shape != spike_clusters.shape:
+        raise ValueError("spike_times and spike_clusters must have the same shape")
+
+    if window_size <= 0 or step_size <= 0:
+        raise ValueError("window_size and step_size must be positive")
+
+    # Preserve actual time reference
     t_start = float(spike_times.min())
+    t_end = float(spike_times.max())
 
-    # Total duration of recording
-    recording_duration = float(spike_times.max() - t_start)
-    if recording_duration < window_size:
-        # No full window fits; return empty with units list
+    if (t_end - t_start) < window_size:
         units = np.unique(spike_clusters)
         return (
             np.zeros((len(units), 0), dtype=np.float64),
@@ -991,47 +999,34 @@ def compute_spike_counts(
             units,
         )
 
-    # Number of windows and their start times
-    num_windows = 1 + int(np.floor((recording_duration - window_size) / step_size))
-    time_bins = (np.arange(num_windows, dtype=np.float64) * step_size) + t_start  # window starts
+    num_windows = 1 + int(np.floor(((t_end - t_start) - window_size) / step_size))
+    time_bins = t_start + np.arange(num_windows, dtype=np.float64) * step_size
 
-    # Assign each spike to a window start index
-    start_idx = np.floor((spike_times - t_start) / step_size).astype(np.int64)
-    valid = (start_idx >= 0) & (start_idx < num_windows)
-    start_idx = start_idx[valid]
-    spike_times_v = spike_times[valid]
-    spike_clusters_v = spike_clusters[valid]
-
-    # Guard against spikes that land in a start bin whose window would end before the spike
-    win_end = (start_idx * step_size) + window_size
-    valid2 = spike_times_v < win_end
-    start_idx = start_idx[valid2]
-    spike_clusters_v = spike_clusters_v[valid2]
-
-    # Map units to row indices
-    units = np.unique(spike_clusters_v)  # actual units present post-filter
+    units = np.unique(spike_clusters)
     unit_to_row = {u: i for i, u in enumerate(units)}
-    rows = np.fromiter(
-        (unit_to_row[u] for u in spike_clusters_v),
-        dtype=np.int64,
-        count=spike_clusters_v.size,
-    )
+    spike_count_matrix = np.zeros((len(units), num_windows), dtype=np.float64)
 
-    # Accumulate counts: (unit, window) -> spike count
-    spike_count_matrix = np.zeros((units.size, num_windows), dtype=np.float64)
-    np.add.at(spike_count_matrix, (rows, start_idx), 1.0)
+    # For each spike, add it to every window that contains it
+    rel_times = spike_times - t_start
 
-    # Optional smoothing (on counts)
+    k_max = np.floor(rel_times / step_size).astype(np.int64)
+    k_min = np.ceil((rel_times - window_size) / step_size).astype(np.int64)
+
+    # Clip to valid window indices
+    k_min = np.clip(k_min, 0, num_windows - 1)
+    k_max = np.clip(k_max, 0, num_windows - 1)
+
+    for t_idx in range(spike_times.size):
+        if k_min[t_idx] <= k_max[t_idx]:
+            row = unit_to_row[spike_clusters[t_idx]]
+            spike_count_matrix[row, k_min[t_idx]:k_max[t_idx] + 1] += 1.0
+
     if sigma and sigma > 0:
         from scipy.ndimage import gaussian_filter1d
-        for r in range(spike_count_matrix.shape[0]):
-            spike_count_matrix[r, :] = gaussian_filter1d(
-                spike_count_matrix[r, :],
-                sigma=sigma,
-                mode='nearest',
-            )
+        spike_count_matrix = gaussian_filter1d(
+            spike_count_matrix, sigma=sigma, axis=1, mode="nearest"
+        )
 
-    # Optional z-score per unit
     if zscore:
         mean = spike_count_matrix.mean(axis=1, keepdims=True)
         std = spike_count_matrix.std(axis=1, keepdims=True)
